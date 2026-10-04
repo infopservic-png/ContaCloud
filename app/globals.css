@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  background-color: #EFEBDE;
+  color: #1F2A3C;
+}
+
+* {
+  border-color: #CBC2A4;
+}
+
+::selection {
+  background-color: #A8703A;
+  color: #EFEBDE;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+input, select {
+  background-color: #F7F4EA;
+}
+
+table {
+  border-collapse: collapse;
+}
