@@ -27,6 +27,10 @@ export default function FacturacionPage() {
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
   const [verJsonId, setVerJsonId] = useState(null);
+  const [clientes, setClientes] = useState([]);
+  const [clienteId, setClienteId] = useState("");
+  const [guardarCliente, setGuardarCliente] = useState(false);
+  const [aviso, setAviso] = useState(null);
 
   const [tipoDte, setTipoDte] = useState("01");
   const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
@@ -44,7 +48,7 @@ export default function FacturacionPage() {
 
   async function cargar() {
     setCargando(true);
-    const [{ data: emp }, { data: cts }, { data: docs }] = await Promise.all([
+    const [{ data: emp }, { data: cts }, { data: docs }, { data: cls }] = await Promise.all([
       supabase.from("empresas").select("*").eq("id", empresaId).single(),
       supabase.from("cuentas").select("*").eq("empresa_id", empresaId).order("codigo"),
       supabase
@@ -52,11 +56,26 @@ export default function FacturacionPage() {
         .select("*")
         .eq("empresa_id", empresaId)
         .order("created_at", { ascending: false }),
+      supabase.from("clientes").select("*").eq("empresa_id", empresaId).order("nombre"),
     ]);
+    setClientes(cls || []);
     setEmpresa(emp);
     setCuentas(cts || []);
     setDocumentos(docs || []);
     setCargando(false);
+  }
+
+  function elegirCliente(id) {
+    setClienteId(id);
+    const c = clientes.find((x) => x.id === id);
+    if (!c) return;
+    setReceptor({
+      nombre: c.nombre || "",
+      nit_dui: c.nit_dui || "",
+      nrc: c.nrc || "",
+      correo: c.correo || "",
+      direccion: c.direccion || "",
+    });
   }
 
   function actualizarItem(i, campo, valor) {
@@ -189,7 +208,35 @@ export default function FacturacionPage() {
       return;
     }
 
+    let avisoCliente = null;
+    if (guardarCliente) {
+      const datosCliente = {
+        nombre: receptor.nombre.trim(),
+        nit_dui: receptor.nit_dui.trim() || null,
+        nrc: receptor.nrc.trim() || null,
+        correo: receptor.correo.trim() || null,
+        direccion: receptor.direccion.trim() || null,
+      };
+      // Si no eligió un cliente pero ya existe uno con el mismo nombre, lo actualiza
+      // en vez de crear un duplicado.
+      const idExistente =
+        clienteId ||
+        clientes.find(
+          (c) => (c.nombre || "").trim().toLowerCase() === datosCliente.nombre.toLowerCase()
+        )?.id;
+      const { error: errCli } = idExistente
+        ? await supabase.from("clientes").update(datosCliente).eq("id", idExistente)
+        : await supabase.from("clientes").insert({ ...datosCliente, empresa_id: empresaId });
+      if (errCli) {
+        avisoCliente =
+          "El documento se emitió, pero no se pudo guardar el cliente: " + errCli.message;
+      }
+    }
+
     setReceptor({ nombre: "", nit_dui: "", nrc: "", correo: "", direccion: "" });
+    setClienteId("");
+    setGuardarCliente(false);
+    setAviso(avisoCliente);
     setItems([lineaVacia()]);
     setGuardando(false);
     cargar();
@@ -253,6 +300,26 @@ export default function FacturacionPage() {
             <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide mb-2">
               Receptor
             </p>
+            <div className="mb-3">
+              <label className="block text-xs text-inkSoft mb-1">Cliente registrado</label>
+              <select
+                value={clienteId}
+                onChange={(e) => elegirCliente(e.target.value)}
+                className="w-full sm:w-1/2 border border-paperLine rounded-sm px-2 py-2 text-sm"
+              >
+                <option value="">
+                  {clientes.length === 0
+                    ? "No hay clientes registrados — escribe el receptor abajo"
+                    : "— Escribir el receptor manualmente —"}
+                </option>
+                {clientes.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nombre}
+                    {c.nit_dui ? ` — ${c.nit_dui}` : ""}
+                  </option>
+                ))}
+              </select>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input
                 placeholder="Nombre / Razón social"
@@ -285,6 +352,16 @@ export default function FacturacionPage() {
                 className="border border-paperLine rounded-sm px-2 py-2 text-sm"
               />
             </div>
+            <label className="flex items-center gap-2 mt-3 text-sm text-inkSoft">
+              <input
+                type="checkbox"
+                checked={guardarCliente}
+                onChange={(e) => setGuardarCliente(e.target.checked)}
+              />
+              {clienteId
+                ? "Actualizar los datos de este cliente (NIT/DUI, NRC, correo, dirección)"
+                : "Guardar este receptor en mis clientes (también aparecerá en Cuentas por Cobrar)"}
+            </label>
           </div>
 
           <div>
@@ -388,6 +465,7 @@ export default function FacturacionPage() {
           </div>
 
           {error && <p className="text-sm text-rust">{error}</p>}
+          {aviso && <p className="text-sm text-brassDark">{aviso}</p>}
 
           <button
             type="submit"
