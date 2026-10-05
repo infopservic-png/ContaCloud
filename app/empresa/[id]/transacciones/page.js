@@ -1,313 +1,525 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useEmpresa } from "@/lib/EmpresaContext";
+import { obtenerPartidas, formatoMoneda } from "@/lib/contabilidad";
+import CuentaCombobox from "@/lib/CuentaCombobox";
+import { exportarAExcel } from "@/lib/exportarExcel";
 
 function lineaVacia() {
   return { cuenta_id: "", debe: "", haber: "" };
 }
 
+function formularioVacio() {
+  return {
+    fecha: new Date().toISOString().slice(0, 10),
+    descripcion: "",
+    elaborado_por: "",
+    revisado_por: "",
+    lineas: [lineaVacia(), lineaVacia()],
+  };
+}
+
 export default function TransaccionesPage() {
-  const params = useParams();
-  const empresaId = params.id;
+  const { cuentas, empresaId } = useEmpresa();
 
-  const [cuentas, setCuentas] = useState([]);
-  const [transacciones, setTransacciones] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [guardando, setGuardando] = useState(false);
+  const [form, setForm] = useState(formularioVacio());
+  const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState(null);
-  const [exito, setExito] = useState(null);
+  const [guardando, setGuardando] = useState(false);
 
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
-  const [descripcion, setDescripcion] = useState("");
-  const [lineas, setLineas] = useState([lineaVacia(), lineaVacia()]);
+  const [partidas, setPartidas] = useState([]);
+  const [cargandoPartidas, setCargandoPartidas] = useState(true);
+
+  async function cargarPartidas() {
+    setCargandoPartidas(true);
+    try {
+      const data = await obtenerPartidas(empresaId);
+      setPartidas(data);
+    } finally {
+      setCargandoPartidas(false);
+    }
+  }
 
   useEffect(() => {
-    cargarTodo();
+    cargarPartidas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [empresaId]);
 
-  async function cargarTodo() {
-    setCargando(true);
-    const [{ data: cuentasData }, { data: transData }] = await Promise.all([
-      supabase.from("cuentas").select("*").eq("empresa_id", empresaId).order("codigo"),
-      supabase
-        .from("transacciones")
-        .select("*, movimientos(*, cuentas(codigo, nombre))")
-        .eq("empresa_id", empresaId)
-        .order("numero_partida", { ascending: false }),
-    ]);
-    setCuentas(cuentasData || []);
-    setTransacciones(transData || []);
-    setCargando(false);
+  const totalDebe = useMemo(
+    () => form.lineas.reduce((a, l) => a + (Number(l.debe) || 0), 0),
+    [form.lineas]
+  );
+  const totalHaber = useMemo(
+    () => form.lineas.reduce((a, l) => a + (Number(l.haber) || 0), 0),
+    [form.lineas]
+  );
+  const cuadra = totalDebe === totalHaber && totalDebe > 0;
+
+  function exportarDiario() {
+    const filas = [["Partida N.°", "Fecha", "Cuenta", "Debe", "Haber", "Elaborado por", "Revisado por"]];
+    for (const p of partidas) {
+      p.movimientos.forEach((m, i) => {
+        filas.push([
+          i === 0 ? p.numero_partida : "",
+          i === 0 ? p.fecha : "",
+          `${m.cuentas.codigo} — ${m.cuentas.nombre}`,
+          m.debe > 0 ? m.debe : "",
+          m.haber > 0 ? m.haber : "",
+          i === 0 ? p.elaborado_por || "" : "",
+          i === 0 ? p.revisado_por || "" : "",
+        ]);
+      });
+      filas.push([]);
+    }
+    exportarAExcel("libro-diario", [{ nombre: "Libro Diario", filas }]);
   }
 
-  function actualizarLinea(index, campo, valor) {
-    const copia = [...lineas];
-    copia[index] = { ...copia[index], [campo]: valor };
-    setLineas(copia);
+  function actualizarCampo(campo, valor) {
+    setForm((f) => ({ ...f, [campo]: valor }));
+  }
+
+  function actualizarLinea(idx, campo, valor) {
+    setForm((f) => {
+      const copia = [...f.lineas];
+      copia[idx] = { ...copia[idx], [campo]: valor };
+      if (campo === "debe" && valor) copia[idx].haber = "";
+      if (campo === "haber" && valor) copia[idx].debe = "";
+      return { ...f, lineas: copia };
+    });
   }
 
   function agregarLinea() {
-    setLineas([...lineas, lineaVacia()]);
+    setForm((f) => ({ ...f, lineas: [...f.lineas, lineaVacia()] }));
   }
 
-  function quitarLinea(index) {
-    if (lineas.length <= 2) return;
-    setLineas(lineas.filter((_, i) => i !== index));
+  function quitarLinea(idx) {
+    if (form.lineas.length <= 2) return;
+    setForm((f) => ({ ...f, lineas: f.lineas.filter((_, i) => i !== idx) }));
   }
 
-  const totalDebe = lineas.reduce((s, l) => s + (parseFloat(l.debe) || 0), 0);
-  const totalHaber = lineas.reduce((s, l) => s + (parseFloat(l.haber) || 0), 0);
-  const cuadra =
-    totalDebe > 0 && Math.abs(totalDebe - totalHaber) < 0.005;
+  function empezarEdicion(p) {
+    setEditandoId(p.id);
+    setForm({
+      fecha: p.fecha,
+      descripcion: p.descripcion,
+      elaborado_por: p.elaborado_por || "",
+      revisado_por: p.revisado_por || "",
+      lineas: p.movimientos.map((m) => ({
+        cuenta_id: m.cuenta_id || cuentas.find((c) => c.codigo === m.cuentas?.codigo)?.id || "",
+        debe: m.debe > 0 ? String(m.debe) : "",
+        haber: m.haber > 0 ? String(m.haber) : "",
+      })),
+    });
+    setError(null);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
 
-  async function guardarTransaccion(e) {
+  function cancelarEdicion() {
+    setEditandoId(null);
+    setForm(formularioVacio());
+    setError(null);
+  }
+
+  async function eliminarPartida(id) {
+    if (!confirm("¿Eliminar esta partida? Esta acción no se puede deshacer.")) return;
+    const { error: err } = await supabase.from("transacciones").delete().eq("id", id);
+    if (err) {
+      alert("No se pudo eliminar: " + err.message);
+      return;
+    }
+    if (editandoId === id) cancelarEdicion();
+    cargarPartidas();
+  }
+
+  async function guardarPartida(e) {
     e.preventDefault();
     setError(null);
-    setExito(null);
 
-    if (!descripcion.trim()) {
-      setError("Escribe una descripción para la transacción.");
-      return;
-    }
-    const lineasValidas = lineas.filter(
-      (l) => l.cuenta_id && (parseFloat(l.debe) > 0 || parseFloat(l.haber) > 0)
+    const lineasValidas = form.lineas.filter(
+      (l) => l.cuenta_id && (Number(l.debe) > 0 || Number(l.haber) > 0)
     );
+
     if (lineasValidas.length < 2) {
-      setError("Necesitas al menos dos líneas con cuenta y monto.");
-      return;
-    }
-    if (lineasValidas.some((l) => parseFloat(l.debe) > 0 && parseFloat(l.haber) > 0)) {
-      setError("Una línea no puede tener monto en Debe y en Haber a la vez.");
+      setError("Agrega al menos dos líneas con cuenta y monto.");
       return;
     }
     if (!cuadra) {
-      setError(
-        `La partida no cuadra: Debe ${totalDebe.toFixed(2)} vs Haber ${totalHaber.toFixed(2)}.`
-      );
+      setError("La suma del Debe debe ser igual a la suma del Haber (y mayor que cero).");
+      return;
+    }
+    if (!form.descripcion.trim()) {
+      setError("Escribe una descripción (glosa) de la partida.");
       return;
     }
 
     setGuardando(true);
 
-    const numeroPartida =
-      transacciones.length > 0 ? transacciones[0].numero_partida + 1 : 1;
+    if (editandoId) {
+      // Modo edición: actualiza el encabezado y reemplaza las líneas.
+      const { error: errTx } = await supabase
+        .from("transacciones")
+        .update({
+          fecha: form.fecha,
+          descripcion: form.descripcion.trim(),
+          elaborado_por: form.elaborado_por.trim() || null,
+          revisado_por: form.revisado_por.trim() || null,
+        })
+        .eq("id", editandoId);
 
-    const { data: trans, error: errTrans } = await supabase
+      if (errTx) {
+        setError("No se pudo actualizar: " + errTx.message);
+        setGuardando(false);
+        return;
+      }
+
+      const { error: errDel } = await supabase
+        .from("movimientos")
+        .delete()
+        .eq("transaccion_id", editandoId);
+
+      if (errDel) {
+        setError("No se pudieron actualizar las líneas: " + errDel.message);
+        setGuardando(false);
+        return;
+      }
+
+      const movimientos = lineasValidas.map((l) => ({
+        transaccion_id: editandoId,
+        cuenta_id: l.cuenta_id,
+        debe: Number(l.debe) || 0,
+        haber: Number(l.haber) || 0,
+      }));
+
+      const { error: errMov } = await supabase.from("movimientos").insert(movimientos);
+
+      if (errMov) {
+        setError("Se actualizó la partida, pero fallaron las líneas: " + errMov.message);
+        setGuardando(false);
+        return;
+      }
+
+      cancelarEdicion();
+      setGuardando(false);
+      cargarPartidas();
+      return;
+    }
+
+    // Modo creación
+    const siguienteNumero =
+      partidas.length > 0 ? Math.max(...partidas.map((p) => p.numero_partida)) + 1 : 1;
+
+    const { data: transaccion, error: errTx } = await supabase
       .from("transacciones")
       .insert({
         empresa_id: empresaId,
-        fecha,
-        descripcion: descripcion.trim(),
-        numero_partida: numeroPartida,
+        fecha: form.fecha,
+        descripcion: form.descripcion.trim(),
+        numero_partida: siguienteNumero,
+        elaborado_por: form.elaborado_por.trim() || null,
+        revisado_por: form.revisado_por.trim() || null,
       })
       .select()
       .single();
 
-    if (errTrans) {
-      setError("No se pudo guardar la transacción: " + errTrans.message);
+    if (errTx) {
+      setError("No se pudo registrar la partida: " + errTx.message);
       setGuardando(false);
       return;
     }
 
     const movimientos = lineasValidas.map((l) => ({
-      transaccion_id: trans.id,
+      transaccion_id: transaccion.id,
       cuenta_id: l.cuenta_id,
-      debe: parseFloat(l.debe) || 0,
-      haber: parseFloat(l.haber) || 0,
+      debe: Number(l.debe) || 0,
+      haber: Number(l.haber) || 0,
     }));
 
     const { error: errMov } = await supabase.from("movimientos").insert(movimientos);
 
     if (errMov) {
-      setError("Transacción creada, pero fallaron las líneas: " + errMov.message);
+      setError("Partida creada, pero fallaron las líneas: " + errMov.message);
       setGuardando(false);
       return;
     }
 
-    setExito(`Partida #${numeroPartida} registrada correctamente.`);
-    setDescripcion("");
-    setLineas([lineaVacia(), lineaVacia()]);
+    setForm(formularioVacio());
     setGuardando(false);
-    cargarTodo();
-  }
-
-  if (cargando) {
-    return <p className="text-inkSoft">Cargando…</p>;
-  }
-
-  if (cuentas.length === 0) {
-    return (
-      <p className="text-inkSoft text-sm">
-        Primero necesitas al menos una cuenta en el{" "}
-        <span className="font-medium">Catálogo de cuentas</span> para poder
-        registrar transacciones.
-      </p>
-    );
+    cargarPartidas();
   }
 
   return (
-    <div className="space-y-10">
-      <section className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6">
-        <h2 className="font-display text-base font-semibold mb-4">
-          Registrar nueva partida
-        </h2>
-        <form onSubmit={guardarTransaccion} className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+    <div>
+      <h2 className="font-display text-lg font-semibold mb-4">
+        {editandoId ? "Editar Partida" : "Registrar Partida"}
+      </h2>
+
+      <section className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6 mb-10 no-print">
+        <form onSubmit={guardarPartida} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <label className="block text-xs text-inkSoft mb-1">Fecha</label>
+              <label className="block text-xs font-medium text-inkSoft mb-1">Fecha</label>
               <input
                 type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm"
+                value={form.fecha}
+                onChange={(e) => actualizarCampo("fecha", e.target.value)}
+                className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm"
               />
             </div>
-            <div className="sm:col-span-3">
-              <label className="block text-xs text-inkSoft mb-1">
-                Descripción de la operación
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-inkSoft mb-1">
+                Descripción / Glosa
               </label>
               <input
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-                placeholder="Ej. Se compra mercadería al contado según factura 001"
-                className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm"
+                value={form.descripcion}
+                onChange={(e) => actualizarCampo("descripcion", e.target.value)}
+                placeholder="Ej. Compra de mobiliario al contado"
+                className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm"
               />
             </div>
           </div>
 
-          <div>
-            <div className="grid grid-cols-12 gap-2 text-xs text-inkSoft mb-1 px-1">
-              <span className="col-span-6">Cuenta</span>
-              <span className="col-span-2 text-right">Debe</span>
-              <span className="col-span-2 text-right">Haber</span>
-              <span className="col-span-2"></span>
-            </div>
-            <div className="space-y-2">
-              {lineas.map((l, i) => (
-                <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                  <select
-                    value={l.cuenta_id}
-                    onChange={(e) => actualizarLinea(i, "cuenta_id", e.target.value)}
-                    className="col-span-6 border border-paperLine rounded-sm px-2 py-2 text-sm"
-                  >
-                    <option value="">Selecciona una cuenta…</option>
-                    {cuentas.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.codigo} — {c.nombre}
-                      </option>
-                    ))}
-                  </select>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={l.debe}
-                    onChange={(e) => actualizarLinea(i, "debe", e.target.value)}
-                    placeholder="0.00"
-                    className="col-span-2 border border-paperLine rounded-sm px-2 py-2 text-sm text-right font-num"
-                  />
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={l.haber}
-                    onChange={(e) => actualizarLinea(i, "haber", e.target.value)}
-                    placeholder="0.00"
-                    className="col-span-2 border border-paperLine rounded-sm px-2 py-2 text-sm text-right font-num"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => quitarLinea(i)}
-                    disabled={lineas.length <= 2}
-                    className="col-span-2 text-xs text-rust hover:underline disabled:opacity-30 disabled:cursor-not-allowed"
-                  >
-                    Quitar
-                  </button>
-                </div>
-              ))}
-            </div>
+          <div className="border border-paperLine rounded-sm overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-ink text-paper text-left">
+                  <th className="px-3 py-2 font-medium">Cuenta</th>
+                  <th className="px-3 py-2 font-medium w-32">Debe</th>
+                  <th className="px-3 py-2 font-medium w-32">Haber</th>
+                  <th className="px-3 py-2 w-10"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {form.lineas.map((l, idx) => (
+                  <tr key={idx} className="border-t border-paperLine">
+                    <td className="px-3 py-1.5">
+                      <CuentaCombobox
+                        cuentas={cuentas}
+                        value={l.cuenta_id}
+                        onChange={(id) => actualizarLinea(idx, "cuenta_id", id)}
+                      />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.debe}
+                        onChange={(e) => actualizarLinea(idx, "debe", e.target.value)}
+                        className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm font-num text-right"
+                        placeholder="0.00"
+                      />
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={l.haber}
+                        onChange={(e) => actualizarLinea(idx, "haber", e.target.value)}
+                        className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm font-num text-right"
+                        placeholder="0.00"
+                      />
+                    </td>
+                    <td className="px-1 py-1.5 text-center">
+                      {form.lineas.length > 2 && (
+                        <button
+                          type="button"
+                          onClick={() => quitarLinea(idx)}
+                          className="text-rust text-xs"
+                          title="Quitar línea"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t border-paperLine font-medium">
+                  <td className="px-3 py-2 text-right text-xs text-inkSoft">Totales</td>
+                  <td className="px-3 py-2 font-num text-right tabular">
+                    {formatoMoneda(totalDebe)}
+                  </td>
+                  <td className="px-3 py-2 font-num text-right tabular">
+                    {formatoMoneda(totalHaber)}
+                  </td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          <div className="flex items-center justify-between">
             <button
               type="button"
               onClick={agregarLinea}
-              className="text-xs text-brassDark hover:underline mt-2"
+              className="text-sm text-brassDark hover:underline"
             >
               + Agregar línea
             </button>
-          </div>
-
-          <div className="flex items-center justify-between border-t border-paperLine pt-3">
-            <div className="text-sm font-num tabular space-x-6">
-              <span>
-                Debe: <strong>{totalDebe.toFixed(2)}</strong>
-              </span>
-              <span>
-                Haber: <strong>{totalHaber.toFixed(2)}</strong>
-              </span>
-            </div>
-            <span
-              className={`text-xs px-2 py-1 rounded-sm ${
-                cuadra ? "bg-ledger/20 text-ledgerDark" : "bg-rust/10 text-rust"
-              }`}
-            >
-              {cuadra ? "Partida cuadrada ✓" : "No cuadra todavía"}
+            <span className={`text-xs ${cuadra ? "text-ledger" : "text-rust"}`}>
+              {cuadra
+                ? "✓ La partida cuadra"
+                : `Diferencia: ${formatoMoneda(Math.abs(totalDebe - totalHaber))}`}
             </span>
           </div>
 
-          {error && <p className="text-sm text-rust">{error}</p>}
-          {exito && <p className="text-sm text-ledger">{exito}</p>}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-inkSoft mb-1">
+                Elaborado por
+              </label>
+              <input
+                value={form.elaborado_por}
+                onChange={(e) => actualizarCampo("elaborado_por", e.target.value)}
+                placeholder="Nombre de quien elabora"
+                className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-inkSoft mb-1">
+                Revisado por
+              </label>
+              <input
+                value={form.revisado_por}
+                onChange={(e) => actualizarCampo("revisado_por", e.target.value)}
+                placeholder="Nombre de quien revisa"
+                className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm"
+              />
+            </div>
+          </div>
 
-          <button
-            type="submit"
-            disabled={guardando}
-            className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
-          >
-            {guardando ? "Guardando…" : "Registrar partida"}
-          </button>
+          {error && <p className="text-sm text-rust">{error}</p>}
+
+          <div className="flex items-center gap-3">
+            <button
+              type="submit"
+              disabled={guardando || cuentas.length === 0}
+              className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
+            >
+              {guardando
+                ? "Guardando…"
+                : editandoId
+                ? "Guardar cambios"
+                : "Registrar partida"}
+            </button>
+            {editandoId && (
+              <button
+                type="button"
+                onClick={cancelarEdicion}
+                className="text-sm text-inkSoft hover:text-ink underline underline-offset-2"
+              >
+                Cancelar edición
+              </button>
+            )}
+          </div>
+          {cuentas.length === 0 && (
+            <p className="text-xs text-inkSoft">
+              Primero agrega cuentas en la pestaña "Cuentas".
+            </p>
+          )}
         </form>
       </section>
 
-      <section>
-        <h2 className="font-display text-base font-semibold mb-4">Libro Diario</h2>
-        {transacciones.length === 0 ? (
-          <p className="text-inkSoft text-sm">Aún no hay partidas registradas.</p>
-        ) : (
-          <div className="space-y-4">
-            {transacciones.map((t) => (
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-display text-lg font-semibold">
+          Reporte de Partidas (Libro Diario)
+        </h2>
+        <button
+          onClick={() => window.print()}
+          className="text-xs text-inkSoft hover:text-ink underline underline-offset-2 no-print"
+        >
+          Imprimir
+        </button>
+      </div>
+
+      {partidas.length > 0 && (
+        <button
+          onClick={exportarDiario}
+          className="text-xs text-ledgerDark hover:underline no-print mb-4 inline-block"
+        >
+          Exportar a Excel
+        </button>
+      )}
+
+      {cargandoPartidas ? (
+        <p className="text-inkSoft text-sm">Cargando partidas…</p>
+      ) : partidas.length === 0 ? (
+        <p className="text-inkSoft text-sm">Todavía no hay partidas registradas.</p>
+      ) : (
+        <div className="space-y-4">
+          {partidas.map((p) => {
+            const subDebe = p.movimientos.reduce((a, m) => a + Number(m.debe), 0);
+            const subHaber = p.movimientos.reduce((a, m) => a + Number(m.haber), 0);
+            return (
               <div
-                key={t.id}
-                className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden"
+                key={p.id}
+                className="partida-imprimir bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden"
               >
-                <div className="px-4 py-2 border-b border-paperLine flex items-center justify-between bg-paperLine/20">
-                  <span className="text-sm font-medium">
-                    Partida #{t.numero_partida} — {t.descripcion}
+                <div className="flex items-center justify-between px-4 py-2 bg-paperLine/30 text-xs">
+                  <span className="font-medium">
+                    Partida N.° {p.numero_partida} — {p.fecha}
                   </span>
-                  <span className="text-xs text-inkSoft font-num">{t.fecha}</span>
+                  <span className="text-inkSoft italic">{p.descripcion}</span>
+                  <span className="flex items-center gap-3 no-print">
+                    <button
+                      onClick={() => empezarEdicion(p)}
+                      className="text-brassDark font-medium hover:underline"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => eliminarPartida(p.id)}
+                      className="text-rust hover:underline"
+                    >
+                      Eliminar
+                    </button>
+                  </span>
                 </div>
                 <table className="w-full text-sm">
                   <tbody>
-                    {t.movimientos.map((m) => (
-                      <tr key={m.id} className="border-b border-paperLine last:border-0">
-                        <td className="px-4 py-1.5 pl-8 text-inkSoft">
-                          {m.cuentas?.codigo} — {m.cuentas?.nombre}
+                    {p.movimientos.map((m) => (
+                      <tr key={m.id} className="border-t border-paperLine">
+                        <td className="px-4 py-1.5">
+                          {m.debe > 0 ? "" : "     "}
+                          {m.cuentas.codigo} — {m.cuentas.nombre}
                         </td>
-                        <td className="px-4 py-1.5 text-right font-num tabular w-28">
-                          {m.debe > 0 ? Number(m.debe).toFixed(2) : ""}
+                        <td className="px-3 py-1.5 w-28 font-num text-right tabular">
+                          {m.debe > 0 ? formatoMoneda(m.debe) : ""}
                         </td>
-                        <td className="px-4 py-1.5 text-right font-num tabular w-28">
-                          {m.haber > 0 ? Number(m.haber).toFixed(2) : ""}
+                        <td className="px-3 py-1.5 w-28 font-num text-right tabular">
+                          {m.haber > 0 ? formatoMoneda(m.haber) : ""}
                         </td>
                       </tr>
                     ))}
+                    <tr className="border-t border-paperLine text-xs text-inkSoft">
+                      <td className="px-4 py-1 text-right">Subtotal</td>
+                      <td className="px-3 py-1 font-num text-right tabular">
+                        {formatoMoneda(subDebe)}
+                      </td>
+                      <td className="px-3 py-1 font-num text-right tabular">
+                        {formatoMoneda(subHaber)}
+                      </td>
+                    </tr>
+                    {(p.elaborado_por || p.revisado_por) && (
+                      <tr className="border-t border-paperLine text-xs text-inkSoft">
+                        <td colSpan={3} className="px-4 py-1.5">
+                          {p.elaborado_por && <span>Elaborado por: {p.elaborado_por}</span>}
+                          {p.elaborado_por && p.revisado_por && <span> &nbsp;•&nbsp; </span>}
+                          {p.revisado_por && <span>Revisado por: {p.revisado_por}</span>}
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-            ))}
-          </div>
-        )}
-      </section>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

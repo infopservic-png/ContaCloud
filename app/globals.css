@@ -27,3 +27,22 @@ input, select {
 table {
   border-collapse: collapse;
 }
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white;
+  }
+  .partida-imprimir {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: page;
+    page-break-after: always;
+  }
+  .partida-imprimir:last-of-type {
+    break-after: auto;
+    page-break-after: auto;
+  }
+}

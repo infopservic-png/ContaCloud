@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [modo, setModo] = useState("entrar");
+  const [modo, setModo] = useState("entrar"); // "entrar" | "registrar"
   const [correo, setCorreo] = useState("");
   const [clave, setClave] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -107,6 +108,16 @@ export default function LoginPage() {
                 className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brass"
                 placeholder="Mínimo 6 caracteres"
               />
+              {modo === "entrar" && (
+                <div className="text-right mt-1">
+                  <Link
+                    href="/recuperar"
+                    className="text-xs text-brass hover:text-brassDark hover:underline"
+                  >
+                    ¿Olvidaste tu contraseña?
+                  </Link>
+                </div>
+              )}
             </div>
 
             {mensaje && (
