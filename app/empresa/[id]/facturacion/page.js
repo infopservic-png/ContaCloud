@@ -167,6 +167,35 @@ export default function FacturacionPage() {
     await cargar();
   }
 
+  function descargar(blob, nombre) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nombre;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function descargarPdf(d) {
+    setError(null);
+    try {
+      const { generarPdfDte } = await import("@/lib/dtePdf");
+      const bytes = await generarPdfDte(d.json_dte, { estado: d.estado });
+      descargar(new Blob([bytes], { type: "application/pdf" }), `${d.numero_control}.pdf`);
+    } catch (e) {
+      setError("No se pudo generar el PDF: " + (e.message || e));
+    }
+  }
+
+  function descargarJson(d) {
+    descargar(
+      new Blob([JSON.stringify(d.json_dte, null, 2)], { type: "application/json" }),
+      `${d.codigo_generacion}.json`
+    );
+  }
+
   async function eliminar(d) {
     if (
       !window.confirm(
@@ -423,6 +452,12 @@ export default function FacturacionPage() {
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
+                        <button onClick={() => descargarPdf(d)} className="text-xs text-ledgerDark font-medium hover:underline mr-3">
+                          PDF
+                        </button>
+                        <button onClick={() => descargarJson(d)} className="text-xs text-brassDark hover:underline mr-3">
+                          Descargar JSON
+                        </button>
                         <button onClick={() => setVerJsonId(verJsonId === d.id ? null : d.id)}
                           className="text-xs text-brassDark hover:underline mr-3">
                           {verJsonId === d.id ? "Ocultar JSON" : "Ver JSON"}
