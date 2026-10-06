@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Marca from "@/components/Marca";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
@@ -51,7 +52,9 @@ export default function LoginPage() {
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl font-semibold text-ink">ContaCloud</h1>
+          <h1 className="font-display text-3xl font-semibold text-ink">
+            <Marca tamano="lg" vertical />
+          </h1>
           <p className="text-inkSoft mt-1 text-sm">
             Práctica de partida doble para empresas de comercio y servicio
           </p>
@@ -63,7 +66,7 @@ export default function LoginPage() {
               onClick={() => setModo("entrar")}
               className={`flex-1 pb-3 text-sm font-medium ${
                 modo === "entrar"
-                  ? "text-ink border-b-2 border-brass -mb-px"
+                  ? "text-ink border-b-2 border-accent -mb-px"
                   : "text-inkSoft"
               }`}
             >
@@ -73,7 +76,7 @@ export default function LoginPage() {
               onClick={() => setModo("registrar")}
               className={`flex-1 pb-3 text-sm font-medium ${
                 modo === "registrar"
-                  ? "text-ink border-b-2 border-brass -mb-px"
+                  ? "text-ink border-b-2 border-accent -mb-px"
                   : "text-inkSoft"
               }`}
             >
@@ -91,7 +94,7 @@ export default function LoginPage() {
                 required
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
-                className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brass"
+                className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="tu.nombre@universidad.edu"
               />
             </div>
@@ -105,14 +108,14 @@ export default function LoginPage() {
                 minLength={6}
                 value={clave}
                 onChange={(e) => setClave(e.target.value)}
-                className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brass"
+                className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Mínimo 6 caracteres"
               />
               {modo === "entrar" && (
                 <div className="text-right mt-1">
                   <Link
                     href="/recuperar"
-                    className="text-xs text-brass hover:text-brassDark hover:underline"
+                    className="text-xs text-accentDark hover:underline"
                   >
                     ¿Olvidaste tu contraseña?
                   </Link>
@@ -133,7 +136,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={cargando}
-              className="w-full bg-ink text-paper py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
+              className="w-full bg-brand text-onBrand py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
             >
               {cargando
                 ? "Procesando…"

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Marca from "@/components/Marca";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -36,7 +37,9 @@ export default function RecuperarPage() {
     <main className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="font-display text-3xl font-semibold text-ink">ContaCloud</h1>
+          <h1 className="font-display text-3xl font-semibold text-ink">
+            <Marca tamano="lg" vertical />
+          </h1>
           <p className="text-inkSoft mt-1 text-sm">Recuperar contraseña</p>
         </div>
 
@@ -66,7 +69,7 @@ export default function RecuperarPage() {
                   required
                   value={correo}
                   onChange={(e) => setCorreo(e.target.value)}
-                  className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brass"
+                  className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                   placeholder="tu.nombre@universidad.edu"
                 />
               </div>
@@ -76,7 +79,7 @@ export default function RecuperarPage() {
               <button
                 type="submit"
                 disabled={cargando}
-                className="w-full bg-ink text-paper py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
+                className="w-full bg-brand text-onBrand py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
               >
                 {cargando ? "Enviando…" : "Enviar enlace"}
               </button>
@@ -85,7 +88,7 @@ export default function RecuperarPage() {
         </div>
 
         <p className="text-center mt-4">
-          <Link href="/login" className="text-sm text-brass hover:text-brassDark hover:underline">
+          <Link href="/login" className="text-sm text-accentDark hover:underline">
             Volver a iniciar sesión
           </Link>
         </p>

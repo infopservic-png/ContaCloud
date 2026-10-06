@@ -99,7 +99,7 @@ export default function DatosEmisor({ empresa, onGuardado }) {
             </span>
           )}
           {!faltanDatos && (
-            <p className={`text-xs mt-1 ${faltantes.length ? "text-brassDark" : "text-ledgerDark"}`}>
+            <p className={`text-xs mt-1 ${faltantes.length ? "text-accentDark" : "text-ledgerDark"}`}>
               {faltantes.length
                 ? `Para transmitir a Hacienda falta: ${faltantes.join(", ")}.`
                 : "Datos completos para transmitir."}
@@ -108,7 +108,7 @@ export default function DatosEmisor({ empresa, onGuardado }) {
         </div>
         <button
           onClick={() => setEditando(true)}
-          className="text-xs text-brassDark hover:underline whitespace-nowrap"
+          className="text-xs text-accentDark hover:underline whitespace-nowrap"
         >
           Editar
         </button>
@@ -188,7 +188,7 @@ export default function DatosEmisor({ empresa, onGuardado }) {
         <button
           onClick={guardar}
           disabled={guardando}
-          className="bg-ink text-paper px-4 py-2 rounded-sm text-sm hover:bg-[#2C3A52] disabled:opacity-60"
+          className="bg-brand text-onBrand px-4 py-2 rounded-sm text-sm hover:bg-brandDark disabled:opacity-60"
         >
           {guardando ? "Guardando…" : "Guardar datos"}
         </button>

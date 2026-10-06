@@ -101,7 +101,7 @@ export default function BalancePage() {
         <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-ink text-paper text-left">
+              <tr className="bg-brand text-onBrand text-left">
                 <th className="px-3 py-2 font-medium">Código</th>
                 <th className="px-3 py-2 font-medium">Cuenta</th>
                 <th className="px-3 py-2 font-medium text-right">Suma Debe</th>

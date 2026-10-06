@@ -283,7 +283,7 @@ export default function TransaccionesPage() {
           <div className="border border-paperLine rounded-sm overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-ink text-paper text-left">
+                <tr className="bg-brand text-onBrand text-left">
                   <th className="px-3 py-2 font-medium">Cuenta</th>
                   <th className="px-3 py-2 font-medium w-32">Debe</th>
                   <th className="px-3 py-2 font-medium w-32">Haber</th>
@@ -356,7 +356,7 @@ export default function TransaccionesPage() {
             <button
               type="button"
               onClick={agregarLinea}
-              className="text-sm text-brassDark hover:underline"
+              className="text-sm text-accentDark hover:underline"
             >
               + Agregar línea
             </button>
@@ -398,7 +398,7 @@ export default function TransaccionesPage() {
             <button
               type="submit"
               disabled={guardando || cuentas.length === 0}
-              className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
+              className="bg-brand text-onBrand px-4 py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
             >
               {guardando
                 ? "Guardando…"
@@ -467,7 +467,7 @@ export default function TransaccionesPage() {
                   <span className="flex items-center gap-3 no-print">
                     <button
                       onClick={() => empezarEdicion(p)}
-                      className="text-brassDark font-medium hover:underline"
+                      className="text-accentDark font-medium hover:underline"
                     >
                       Editar
                     </button>

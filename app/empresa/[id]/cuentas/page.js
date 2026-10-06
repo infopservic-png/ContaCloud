@@ -212,7 +212,7 @@ export default function CuentasPage() {
               Exportar a Excel
             </button>
           )}
-          <label className="text-xs text-brassDark hover:underline cursor-pointer">
+          <label className="text-xs text-accentDark hover:underline cursor-pointer">
             {importandoArchivo ? "Importando…" : "Importar desde Excel"}
             <input
               ref={inputArchivoRef}
@@ -227,7 +227,7 @@ export default function CuentasPage() {
             <button
               onClick={importarFaltantes}
               disabled={importando}
-              className="bg-brassDark text-paper px-3 py-1.5 rounded-sm text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
+              className="bg-accentDark text-onAccent px-3 py-1.5 rounded-sm text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-60"
             >
               {importando
                 ? "Importando…"
@@ -251,7 +251,7 @@ export default function CuentasPage() {
       <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden mb-8">
         <table className="w-full text-sm">
           <thead>
-            <tr className="bg-ink text-paper text-left">
+            <tr className="bg-brand text-onBrand text-left">
               <th className="px-3 py-2 font-medium">Código</th>
               <th className="px-3 py-2 font-medium">Nombre</th>
               <th className="px-3 py-2 font-medium">Clase</th>
@@ -334,7 +334,7 @@ export default function CuentasPage() {
                     <td className="px-3 py-1.5 whitespace-nowrap no-print">
                       <button
                         onClick={() => empezarEdicion(c)}
-                        className="text-brassDark text-xs font-medium mr-3 hover:underline"
+                        className="text-accentDark text-xs font-medium mr-3 hover:underline"
                       >
                         Editar
                       </button>
@@ -411,7 +411,7 @@ export default function CuentasPage() {
             <button
               type="submit"
               disabled={guardando}
-              className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
+              className="bg-brand text-onBrand px-4 py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
             >
               {guardando ? "Guardando…" : "Agregar cuenta"}
             </button>

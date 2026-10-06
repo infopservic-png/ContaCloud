@@ -198,8 +198,8 @@ export default function BancosPage() {
                   <li key={cb.id}>
                     <button
                       onClick={() => seleccionarCuenta(cb)}
-                      className={`w-full text-left px-3 py-2 text-sm border-b border-paperLine last:border-b-0 hover:bg-brass/10 ${
-                        cuentaBancariaId === cb.id ? "bg-brass/20 font-medium" : ""
+                      className={`w-full text-left px-3 py-2 text-sm border-b border-paperLine last:border-b-0 hover:bg-accent/10 ${
+                        cuentaBancariaId === cb.id ? "bg-accent/20 font-medium" : ""
                       }`}
                     >
                       {cb.nombre}
@@ -211,7 +211,7 @@ export default function BancosPage() {
           </div>
           <button
             onClick={() => setMostrarFormCuenta((v) => !v)}
-            className="text-xs text-brassDark hover:underline"
+            className="text-xs text-accentDark hover:underline"
           >
             {mostrarFormCuenta ? "Cancelar" : "+ Agregar cuenta bancaria"}
           </button>
@@ -257,7 +257,7 @@ export default function BancosPage() {
               <button
                 type="submit"
                 disabled={guardandoCuenta}
-                className="bg-ink text-paper px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-[#2C3A52] disabled:opacity-60"
+                className="bg-brand text-onBrand px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-brandDark disabled:opacity-60"
               >
                 {guardandoCuenta ? "Guardando…" : "Guardar cuenta"}
               </button>
@@ -346,7 +346,7 @@ export default function BancosPage() {
                   <button
                     type="submit"
                     disabled={guardandoMov}
-                    className="bg-ink text-paper px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-[#2C3A52] disabled:opacity-60"
+                    className="bg-brand text-onBrand px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-brandDark disabled:opacity-60"
                   >
                     {guardandoMov ? "Guardando…" : "Agregar"}
                   </button>
@@ -357,7 +357,7 @@ export default function BancosPage() {
               {/* Conciliación de dos columnas */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                 <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden">
-                  <div className="px-3 py-2 bg-ink text-paper text-sm font-medium">
+                  <div className="px-3 py-2 bg-brand text-onBrand text-sm font-medium">
                     Según Libros
                   </div>
                   <table className="w-full text-sm">
@@ -404,7 +404,7 @@ export default function BancosPage() {
                 </div>
 
                 <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden">
-                  <div className="px-3 py-2 bg-ink text-paper text-sm font-medium">
+                  <div className="px-3 py-2 bg-brand text-onBrand text-sm font-medium">
                     Según Banco
                   </div>
                   <table className="w-full text-sm">

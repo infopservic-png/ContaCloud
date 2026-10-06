@@ -174,12 +174,12 @@ export default function MayorPage() {
                 key={grupo.codigo4}
                 className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden"
               >
-                <div className="px-4 py-2 bg-ink text-paper text-sm font-medium flex justify-between">
+                <div className="px-4 py-2 bg-brand text-onBrand text-sm font-medium flex justify-between">
                   <span>
                     {grupo.codigo4} — {grupo.nombre}
                   </span>
                   {grupo.clase && (
-                    <span className="text-paper/70 text-xs uppercase tracking-wide">
+                    <span className="text-onBrand/70 text-xs uppercase tracking-wide">
                       {grupo.clase}
                     </span>
                   )}

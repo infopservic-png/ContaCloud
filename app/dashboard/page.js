@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import Marca from "@/components/Marca";
 import { supabase } from "@/lib/supabaseClient";
 import { catalogoPorTipo } from "@/lib/catalogoCuentas";
 
@@ -116,26 +118,33 @@ export default function Dashboard() {
     <main className="min-h-screen px-6 py-10 max-w-3xl mx-auto">
       <header className="flex items-center justify-between mb-10">
         <div>
-          <h1 className="font-display text-2xl font-semibold">ContaCloud</h1>
+          <h1 className="font-display text-2xl font-semibold">
+            <Marca />
+          </h1>
           <p className="text-inkSoft text-sm">{usuario?.email}</p>
         </div>
-        <button
-          onClick={cerrarSesion}
-          className="text-sm text-inkSoft hover:text-ink underline underline-offset-2"
-        >
-          Cerrar sesión
-        </button>
+        <div className="flex items-center gap-5">
+          <Link href="/perfil" className="text-sm text-accentDark hover:underline">
+            Mi perfil
+          </Link>
+          <button
+            onClick={cerrarSesion}
+            className="text-sm text-inkSoft hover:text-ink underline underline-offset-2"
+          >
+            Cerrar sesión
+          </button>
+        </div>
       </header>
 
       {admin && (
-        <div className="mb-8 bg-brass/10 border border-brass/40 rounded-sm px-4 py-3 flex items-center justify-between">
+        <div className="mb-8 bg-accent/10 border border-accent/40 rounded-sm px-4 py-3 flex items-center justify-between">
           <span className="text-sm">
             Tienes acceso de administrador: puedes ver (solo lectura) las
             empresas de todos los usuarios.
           </span>
           <button
             onClick={() => router.push("/admin")}
-            className="text-sm font-medium text-brassDark hover:underline whitespace-nowrap ml-4"
+            className="text-sm font-medium text-accentDark hover:underline whitespace-nowrap ml-4"
           >
             Panel de administrador →
           </button>
@@ -156,7 +165,7 @@ export default function Dashboard() {
             {empresas.map((emp) => (
               <li
                 key={emp.id}
-                className="bg-[#F7F4EA] border border-paperLine rounded-sm px-4 py-3 flex items-center justify-between hover:border-brass transition-colors"
+                className="bg-[#F7F4EA] border border-paperLine rounded-sm px-4 py-3 flex items-center justify-between hover:border-accent transition-colors"
               >
                 <button
                   onClick={() => router.push(`/empresa/${emp.id}/transacciones`)}
@@ -166,7 +175,7 @@ export default function Dashboard() {
                   <span
                     className={`text-xs px-2 py-1 rounded-sm ${
                       emp.tipo === "comercial"
-                        ? "bg-brass/20 text-brassDark"
+                        ? "bg-accent/20 text-accentDark"
                         : "bg-ledger/20 text-ledgerDark"
                     }`}
                   >
@@ -198,7 +207,7 @@ export default function Dashboard() {
               value={nombre}
               onChange={(e) => setNombre(e.target.value)}
               placeholder="Ej. Comercial El Roble, S.A."
-              className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brass"
+              className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
             />
           </div>
 
@@ -226,7 +235,7 @@ export default function Dashboard() {
                 onClick={() => setTipo("comercial")}
                 className={`border rounded-sm px-4 py-3 text-left text-sm transition-colors ${
                   tipo === "comercial"
-                    ? "border-brass bg-brass/10"
+                    ? "border-accent bg-accent/10"
                     : "border-paperLine"
                 }`}
               >
@@ -243,7 +252,7 @@ export default function Dashboard() {
           <button
             type="submit"
             disabled={creando}
-            className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
+            className="bg-brand text-onBrand px-4 py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
           >
             {creando ? "Creando…" : "Crear empresa y empezar"}
           </button>

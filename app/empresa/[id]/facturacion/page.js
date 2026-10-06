@@ -27,7 +27,7 @@ function lineaVacia(clase) {
 }
 
 const inputCls =
-  "w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brass";
+  "w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent";
 const labelCls = "block text-xs font-medium text-inkSoft mb-1";
 
 export default function FacturacionPage() {
@@ -237,9 +237,9 @@ export default function FacturacionPage() {
       <DatosEmisor empresa={empresa} onGuardado={(v) => actualizarEmpresa(v)} />
 
       {faltantes.length > 0 && (
-        <div className="bg-brass/10 border border-brass/40 rounded-sm px-4 py-3 text-sm">
+        <div className="bg-accent/10 border border-accent/40 rounded-sm px-4 py-3 text-sm">
           Para emitir este tipo de documento falta configurar: <strong>{faltantes.join(", ")}</strong>.{" "}
-          <Link href={`/empresa/${empresaId}/ventas`} className="underline text-brassDark">
+          <Link href={`/empresa/${empresaId}/ventas`} className="underline text-accentDark">
             Ir a Ventas, Configuración de cuentas
           </Link>
         </div>
@@ -474,7 +474,7 @@ export default function FacturacionPage() {
               })}
             </div>
             <button type="button" onClick={() => setLineas((ls) => [...ls, lineaVacia(productos.length ? "producto" : "concepto")])}
-              className="text-xs text-brassDark hover:underline mt-2">
+              className="text-xs text-accentDark hover:underline mt-2">
               + Agregar ítem
             </button>
           </div>
@@ -491,7 +491,7 @@ export default function FacturacionPage() {
           {exito && <p className="text-sm text-ledger">{exito}</p>}
 
           <button type="submit" disabled={guardando}
-            className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] disabled:opacity-60">
+            className="bg-brand text-onBrand px-4 py-2 rounded-sm text-sm font-medium hover:bg-brandDark disabled:opacity-60">
             {guardando ? "Emitiendo…" : "Emitir documento"}
           </button>
         </form>
@@ -523,7 +523,7 @@ export default function FacturacionPage() {
                       <td className="px-4 py-2 font-num">{d.fecha_emision}</td>
                       <td className="px-4 py-2 text-right font-num tabular">{formatoMoneda(d.total)}</td>
                       <td className="px-4 py-2">
-                        <span className="text-xs px-2 py-1 rounded-sm bg-brass/20 text-brassDark">
+                        <span className="text-xs px-2 py-1 rounded-sm bg-accent/20 text-accentDark">
                           {d.estado === "generado" ? "Generado (sin firmar)" : d.estado}
                         </span>
                       </td>
@@ -531,11 +531,11 @@ export default function FacturacionPage() {
                         <button onClick={() => descargarPdf(d)} className="text-xs text-ledgerDark font-medium hover:underline mr-3">
                           PDF
                         </button>
-                        <button onClick={() => descargarJson(d)} className="text-xs text-brassDark hover:underline mr-3">
+                        <button onClick={() => descargarJson(d)} className="text-xs text-accentDark hover:underline mr-3">
                           Descargar JSON
                         </button>
                         <button onClick={() => setVerJsonId(verJsonId === d.id ? null : d.id)}
-                          className="text-xs text-brassDark hover:underline mr-3">
+                          className="text-xs text-accentDark hover:underline mr-3">
                           {verJsonId === d.id ? "Ocultar JSON" : "Ver JSON"}
                         </button>
                         {d.estado === "generado" && (
@@ -547,7 +547,7 @@ export default function FacturacionPage() {
                     </tr>
                     {verJsonId === d.id && (
                       <tr>
-                        <td colSpan={6} className="px-4 py-3 bg-ink">
+                        <td colSpan={6} className="px-4 py-3 bg-[#1F2A3C]">
                           <pre className="text-xs text-paper overflow-x-auto font-num">
                             {JSON.stringify(d.json_dte, null, 2)}
                           </pre>

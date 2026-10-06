@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --brand: 31 42 60;
+  --brand-dark: 44 58 82;
+  --on-brand: 239 235 222;
+  --accent: 168 112 58;
+  --accent-dark: 126 82 40;
+  --on-accent: 239 235 222;
+}
+
 html, body {
   background-color: #EFEBDE;
   color: #1F2A3C;
@@ -12,8 +21,7 @@ html, body {
 }
 
 ::selection {
-  background-color: #A8703A;
-  color: #EFEBDE;
+  background-color: rgb(var(--accent) / 0.35);
 }
 
 .tabular {
@@ -29,6 +37,15 @@ table {
 }
 
 @media print {
+  /* Lo impreso (reportes) siempre usa la paleta original, no los colores de marca */
+  :root {
+  --brand: 31 42 60 !important;
+  --brand-dark: 44 58 82 !important;
+  --on-brand: 239 235 222 !important;
+  --accent: 168 112 58 !important;
+  --accent-dark: 126 82 40 !important;
+  --on-accent: 239 235 222 !important;
+  }
   .no-print {
     display: none !important;
   }

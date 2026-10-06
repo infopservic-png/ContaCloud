@@ -69,7 +69,7 @@ export default function SelectorActividad({
           if (e.target.select) e.target.select();
         }}
         placeholder="Busca por código o por nombre…"
-        className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brass"
+        className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
       />
       {abierto && resultados.length > 0 && (
         <ul className="absolute z-20 mt-1 w-full max-h-56 overflow-auto bg-paper border border-paperLine rounded-sm shadow-lg text-sm">
@@ -80,7 +80,7 @@ export default function SelectorActividad({
                 e.preventDefault();
                 elegir(a);
               }}
-              className="px-2 py-1.5 hover:bg-brass/20 cursor-pointer"
+              className="px-2 py-1.5 hover:bg-accent/20 cursor-pointer"
             >
               <span className="font-num">{a.codigo}</span> — {a.descripcion}
             </li>

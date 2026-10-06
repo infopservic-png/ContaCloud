@@ -3,6 +3,7 @@ module.exports = {
   content: [
     "./app/**/*.{js,jsx}",
     "./components/**/*.{js,jsx}",
+    "./lib/**/*.{js,jsx}",
   ],
   theme: {
     extend: {
@@ -16,6 +17,13 @@ module.exports = {
         ledger: "#2F6B4F",
         ledgerDark: "#204A37",
         rust: "#9C3B2E",
+        // Colores de marca: se personalizan en Mi perfil (variables CSS definidas en globals.css)
+        brand: "rgb(var(--brand) / <alpha-value>)",
+        brandDark: "rgb(var(--brand-dark) / <alpha-value>)",
+        onBrand: "rgb(var(--on-brand) / <alpha-value>)",
+        accent: "rgb(var(--accent) / <alpha-value>)",
+        accentDark: "rgb(var(--accent-dark) / <alpha-value>)",
+        onAccent: "rgb(var(--on-accent) / <alpha-value>)",
       },
       fontFamily: {
         display: ["var(--font-display)", "serif"],

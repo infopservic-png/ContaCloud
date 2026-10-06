@@ -453,8 +453,8 @@ export default function KardexPage() {
                   <li key={p.id}>
                     <button
                       onClick={() => seleccionarProducto(p.id)}
-                      className={`w-full text-left px-3 py-2 text-sm border-b border-paperLine last:border-b-0 hover:bg-brass/10 ${
-                        productoId === p.id ? "bg-brass/20 font-medium" : ""
+                      className={`w-full text-left px-3 py-2 text-sm border-b border-paperLine last:border-b-0 hover:bg-accent/10 ${
+                        productoId === p.id ? "bg-accent/20 font-medium" : ""
                       }`}
                     >
                       {p.codigo ? `${p.codigo} — ` : ""}
@@ -467,7 +467,7 @@ export default function KardexPage() {
           </div>
           <button
             onClick={() => setMostrarFormProducto((v) => !v)}
-            className="text-xs text-brassDark hover:underline"
+            className="text-xs text-accentDark hover:underline"
           >
             {mostrarFormProducto ? "Cancelar" : "+ Agregar producto"}
           </button>
@@ -530,7 +530,7 @@ export default function KardexPage() {
               <button
                 type="submit"
                 disabled={guardandoProducto}
-                className="bg-ink text-paper px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-[#2C3A52] disabled:opacity-60"
+                className="bg-brand text-onBrand px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-brandDark disabled:opacity-60"
               >
                 {guardandoProducto ? "Guardando…" : "Guardar producto"}
               </button>
@@ -590,7 +590,7 @@ export default function KardexPage() {
 
               <section className="bg-[#F7F4EA] border border-paperLine rounded-sm p-4 mb-6 no-print">
                 {editandoMovId && (
-                  <div className="mb-3 bg-brass/10 border border-brass/40 rounded-sm px-3 py-2 text-xs flex items-center justify-between">
+                  <div className="mb-3 bg-accent/10 border border-accent/40 rounded-sm px-3 py-2 text-xs flex items-center justify-between">
                     <span>
                       Editando un movimiento existente — al guardar se recalculará el costo
                       promedio de los movimientos posteriores.
@@ -709,7 +709,7 @@ export default function KardexPage() {
                     <button
                       type="submit"
                       disabled={guardandoMov}
-                      className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] transition-colors disabled:opacity-60"
+                      className="bg-brand text-onBrand px-4 py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
                     >
                       {guardandoMov
                         ? "Guardando…"
@@ -739,7 +739,7 @@ export default function KardexPage() {
                 <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-x-auto">
                   <table className="w-full text-sm min-w-[920px]">
                     <thead>
-                      <tr className="bg-ink text-paper text-center">
+                      <tr className="bg-brand text-onBrand text-center">
                         <th rowSpan={2} className="px-2 py-2 font-medium align-bottom text-left">
                           Fecha
                         </th>
@@ -757,7 +757,7 @@ export default function KardexPage() {
                         </th>
                         <th rowSpan={2} className="px-2 py-2 font-medium align-bottom no-print"></th>
                       </tr>
-                      <tr className="bg-ink text-paper text-center text-xs">
+                      <tr className="bg-brand text-onBrand text-center text-xs">
                         <th className="px-2 py-1 font-normal border-l border-paper/20">Cant.</th>
                         <th className="px-2 py-1 font-normal">C. Unit.</th>
                         <th className="px-2 py-1 font-normal">C. Total</th>
@@ -774,7 +774,7 @@ export default function KardexPage() {
                         <tr
                           key={m.id}
                           className={`border-t border-paperLine text-right ${
-                            editandoMovId === m.id ? "bg-brass/10" : ""
+                            editandoMovId === m.id ? "bg-accent/10" : ""
                           }`}
                         >
                           <td className="px-2 py-1.5 text-left whitespace-nowrap">{m.fecha}</td>
@@ -815,7 +815,7 @@ export default function KardexPage() {
                             <>
                             <button
                               onClick={() => empezarEdicionMovimiento(m)}
-                              className="text-brassDark text-xs font-medium hover:underline mr-2"
+                              className="text-accentDark text-xs font-medium hover:underline mr-2"
                             >
                               Editar
                             </button>

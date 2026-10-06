@@ -90,7 +90,7 @@ export default function AdminPage() {
           <p className="text-sm mb-3">No tienes acceso a esta sección.</p>
           <Link
             href="/dashboard"
-            className="text-sm text-brassDark hover:underline underline-offset-2"
+            className="text-sm text-accentDark hover:underline underline-offset-2"
           >
             ← Volver a mis empresas
           </Link>
@@ -140,7 +140,7 @@ export default function AdminPage() {
         <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-ink text-paper text-left">
+              <tr className="bg-brand text-onBrand text-left">
                 <th className="px-3 py-2 font-medium">Empresa</th>
                 <th className="px-3 py-2 font-medium">Tipo</th>
                 <th className="px-3 py-2 font-medium">Estudiante</th>
@@ -156,7 +156,7 @@ export default function AdminPage() {
                     <span
                       className={`text-xs px-2 py-0.5 rounded-sm ${
                         emp.tipo === "comercial"
-                          ? "bg-brass/20 text-brassDark"
+                          ? "bg-accent/20 text-accentDark"
                           : "bg-ledger/20 text-ledgerDark"
                       }`}
                     >
@@ -172,7 +172,7 @@ export default function AdminPage() {
                   <td className="px-3 py-2 text-right">
                     <button
                       onClick={() => router.push(`/empresa/${emp.id}/cuentas`)}
-                      className="text-brassDark text-xs font-medium hover:underline"
+                      className="text-accentDark text-xs font-medium hover:underline"
                     >
                       Ver →
                     </button>

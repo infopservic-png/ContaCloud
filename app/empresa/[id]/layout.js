@@ -5,6 +5,7 @@ import { useRouter, usePathname, useParams } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { EmpresaContext } from "@/lib/EmpresaContext";
+import Marca from "@/components/Marca";
 
 const TABS = [
   { href: "cuentas", label: "Cuentas" },
@@ -121,7 +122,7 @@ export default function EmpresaLayout({ children }) {
     >
       <main className="min-h-screen px-6 py-8 max-w-5xl mx-auto">
         {usuarioId && empresa?.user_id && usuarioId !== empresa.user_id && (
-          <div className="no-print mb-6 bg-brass/10 border border-brass/40 rounded-sm px-4 py-2 text-sm">
+          <div className="no-print mb-6 bg-accent/10 border border-accent/40 rounded-sm px-4 py-2 text-sm">
             Estás viendo esta empresa en modo administrador (solo lectura) —
             pertenece a {empresa.propietario_email || "otro usuario"}.
           </div>
@@ -140,12 +141,20 @@ export default function EmpresaLayout({ children }) {
             <span
               className={`inline-block text-xs px-2 py-0.5 rounded-sm mt-1 ${
                 empresa?.tipo === "comercial"
-                  ? "bg-brass/20 text-brassDark"
+                  ? "bg-accent/20 text-accentDark"
                   : "bg-ledger/20 text-ledgerDark"
               }`}
             >
               {empresa?.tipo === "comercial" ? "Comercial" : "Servicio"}
             </span>
+          </div>
+          <div className="text-right">
+            <div className="font-display text-sm font-semibold text-inkSoft">
+              <Marca tamano="sm" />
+            </div>
+            <Link href="/perfil" className="text-xs text-accentDark hover:underline">
+              Mi perfil
+            </Link>
           </div>
         </header>
 
@@ -158,7 +167,7 @@ export default function EmpresaLayout({ children }) {
                 href={`/empresa/${empresaId}/${tab.href}`}
                 className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                   activa
-                    ? "border-brass text-ink"
+                    ? "border-accent text-ink"
                     : "border-transparent text-inkSoft hover:text-ink"
                 }`}
               >
