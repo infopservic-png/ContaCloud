@@ -13,7 +13,10 @@ import { TIPOS_DTE, TIPO_DOCUMENTO_VENTA } from "@/lib/dte";
 import { emitirDte, eliminarDte } from "@/lib/dteEmision";
 
 const hoy = () => new Date().toISOString().slice(0, 10);
-const receptorVacio = () => ({ nombre: "", nit_dui: "", nrc: "", correo: "", direccion: "" });
+const receptorVacio = () => ({
+  nombre: "", nombre_comercial: "", tipo_documento: "nit", nit_dui: "", nrc: "",
+  cod_actividad: "", desc_actividad: "", telefono: "", correo: "", direccion: "",
+});
 let contadorLineas = 0;
 function lineaVacia(clase) {
   contadorLineas += 1;
@@ -124,8 +127,13 @@ export default function FacturacionPage() {
     if (!c) return;
     setReceptor({
       nombre: c.nombre || "",
+      nombre_comercial: c.nombre_comercial || "",
+      tipo_documento: c.tipo_documento === "dui" ? "dui" : "nit",
       nit_dui: c.nit_dui || "",
       nrc: c.nrc || "",
+      cod_actividad: c.cod_actividad || "",
+      desc_actividad: c.desc_actividad || "",
+      telefono: c.telefono || "",
       correo: c.correo || "",
       direccion: c.direccion || "",
     });
@@ -243,7 +251,15 @@ export default function FacturacionPage() {
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className={labelCls}>Tipo de documento</label>
-              <select value={tipoDte} onChange={(e) => setTipoDte(e.target.value)} className={inputCls}>
+              <select
+                value={tipoDte}
+                onChange={(e) => {
+                  setTipoDte(e.target.value);
+                  // El Crédito Fiscal solo admite NIT del receptor
+                  if (e.target.value === "03") setReceptor((r) => ({ ...r, tipo_documento: "nit" }));
+                }}
+                className={inputCls}
+              >
                 {Object.entries(TIPOS_DTE).map(([cod, nom]) => (
                   <option key={cod} value={cod}>{cod} — {nom}</option>
                 ))}
@@ -297,17 +313,67 @@ export default function FacturacionPage() {
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input placeholder="Nombre / Razón social" value={receptor.nombre}
-                onChange={(e) => setReceptor({ ...receptor, nombre: e.target.value })}
-                className={`${inputCls} sm:col-span-2`} />
-              <input placeholder={tipoDte === "03" ? "NIT (obligatorio)" : "NIT o DUI"} value={receptor.nit_dui}
-                onChange={(e) => setReceptor({ ...receptor, nit_dui: e.target.value })} className={inputCls} />
-              <input placeholder={tipoDte === "03" ? "NRC (obligatorio)" : "NRC (si aplica)"} value={receptor.nrc}
-                onChange={(e) => setReceptor({ ...receptor, nrc: e.target.value })} className={inputCls} />
-              <input placeholder="Correo" value={receptor.correo}
-                onChange={(e) => setReceptor({ ...receptor, correo: e.target.value })} className={inputCls} />
-              <input placeholder="Dirección" value={receptor.direccion}
-                onChange={(e) => setReceptor({ ...receptor, direccion: e.target.value })} className={inputCls} />
+              <div className="sm:col-span-2">
+                <label className={labelCls}>Nombre / Razón social</label>
+                <input placeholder="Nombre / Razón social" value={receptor.nombre}
+                  onChange={(e) => setReceptor({ ...receptor, nombre: e.target.value })} className={inputCls} />
+              </div>
+              {!esFactura && (
+                <div>
+                  <label className={labelCls}>Nombre comercial (opcional)</label>
+                  <input value={receptor.nombre_comercial}
+                    onChange={(e) => setReceptor({ ...receptor, nombre_comercial: e.target.value })} className={inputCls} />
+                </div>
+              )}
+              <div>
+                <label className={labelCls}>Tipo de documento</label>
+                <select value={receptor.tipo_documento}
+                  onChange={(e) => setReceptor({ ...receptor, tipo_documento: e.target.value })} className={inputCls}>
+                  <option value="nit">NIT</option>
+                  <option value="dui" disabled={!esFactura}>DUI</option>
+                </select>
+              </div>
+              <div>
+                <label className={labelCls}>
+                  {receptor.tipo_documento === "dui" ? "DUI (9 dígitos)" : "NIT (sin guiones)"}{!esFactura ? " *" : ""}
+                </label>
+                <input placeholder={receptor.tipo_documento === "dui" ? "DUI" : "NIT"} value={receptor.nit_dui}
+                  onChange={(e) => setReceptor({ ...receptor, nit_dui: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>NRC (sin guion){!esFactura ? " *" : ""}</label>
+                <input placeholder="NRC" value={receptor.nrc}
+                  onChange={(e) => setReceptor({ ...receptor, nrc: e.target.value })} className={inputCls} />
+              </div>
+              {!esFactura && (
+                <>
+                  <div>
+                    <label className={labelCls}>Código de actividad económica</label>
+                    <input placeholder="5 o 6 caracteres" value={receptor.cod_actividad}
+                      onChange={(e) => setReceptor({ ...receptor, cod_actividad: e.target.value })} className={inputCls} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className={labelCls}>Actividad económica</label>
+                    <input placeholder="Actividad económica del cliente" value={receptor.desc_actividad}
+                      onChange={(e) => setReceptor({ ...receptor, desc_actividad: e.target.value })} className={inputCls} />
+                  </div>
+                </>
+              )}
+              <div>
+                <label className={labelCls}>Teléfono</label>
+                <input value={receptor.telefono}
+                  onChange={(e) => setReceptor({ ...receptor, telefono: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Correo</label>
+                <input placeholder="Correo" value={receptor.correo}
+                  onChange={(e) => setReceptor({ ...receptor, correo: e.target.value })} className={inputCls} />
+              </div>
+              <div>
+                <label className={labelCls}>Dirección</label>
+                <input placeholder="Dirección" value={receptor.direccion}
+                  onChange={(e) => setReceptor({ ...receptor, direccion: e.target.value })} className={inputCls} />
+              </div>
             </div>
             {clienteId ? (
               <label className="flex items-center gap-2 mt-3 text-sm text-inkSoft">
