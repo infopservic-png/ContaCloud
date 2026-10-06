@@ -1,45 +1,52 @@
 "use client";
 
-import { useEffect, useState, Fragment } from "react";
-import { useParams } from "next/navigation";
+import { useEffect, useMemo, useState, Fragment } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { useEmpresa } from "@/lib/EmpresaContext";
 import DatosEmisor from "@/components/DatosEmisor";
-import {
-  TIPOS_DTE,
-  calcularTotales,
-  generarCodigoGeneracion,
-  generarNumeroControl,
-  construirJsonDte,
-} from "@/lib/dte";
+import CuentaCombobox from "@/lib/CuentaCombobox";
+import { obtenerProductos, obtenerKardex, saldoActual } from "@/lib/kardex";
+import { configVC, calcularDocumento } from "@/lib/ventasCompras";
+import { formatoMoneda } from "@/lib/contabilidad";
+import { TIPOS_DTE, TIPO_DOCUMENTO_VENTA } from "@/lib/dte";
+import { emitirDte, eliminarDte } from "@/lib/dteEmision";
 
-function lineaVacia() {
-  return { descripcion: "", cantidad: "1", precio_unitario: "" };
+const hoy = () => new Date().toISOString().slice(0, 10);
+const receptorVacio = () => ({ nombre: "", nit_dui: "", nrc: "", correo: "", direccion: "" });
+let contadorLineas = 0;
+function lineaVacia(clase) {
+  contadorLineas += 1;
+  return { key: contadorLineas, clase, producto_id: "", cuenta_id: "", descripcion: "", cantidad: "1", precio: "" };
 }
 
-export default function FacturacionPage() {
-  const params = useParams();
-  const empresaId = params.id;
+const inputCls =
+  "w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-brass";
+const labelCls = "block text-xs font-medium text-inkSoft mb-1";
 
-  const [empresa, setEmpresa] = useState(null);
-  const [cuentas, setCuentas] = useState([]);
+export default function FacturacionPage() {
+  const { empresa, cuentas, empresaId, actualizarEmpresa } = useEmpresa();
+  const cfg = useMemo(() => configVC("venta"), []);
+
+  const [productos, setProductos] = useState([]);
+  const [clientes, setClientes] = useState([]);
   const [documentos, setDocumentos] = useState([]);
+  const [saldos, setSaldos] = useState({});
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState(null);
+  const [exito, setExito] = useState(null);
   const [verJsonId, setVerJsonId] = useState(null);
-  const [clientes, setClientes] = useState([]);
-  const [clienteId, setClienteId] = useState("");
-  const [guardarCliente, setGuardarCliente] = useState(false);
-  const [aviso, setAviso] = useState(null);
 
   const [tipoDte, setTipoDte] = useState("01");
-  const [fecha, setFecha] = useState(() => new Date().toISOString().slice(0, 10));
-  const [formaPago, setFormaPago] = useState("contado");
-  const [receptor, setReceptor] = useState({ nombre: "", nit_dui: "", nrc: "", correo: "", direccion: "" });
-  const [cuentaCobro, setCuentaCobro] = useState("");
-  const [cuentaIngreso, setCuentaIngreso] = useState("");
-  const [cuentaIva, setCuentaIva] = useState("");
-  const [items, setItems] = useState([lineaVacia()]);
+  const [fecha, setFecha] = useState(hoy());
+  const [condicion, setCondicion] = useState("contado");
+  const [fechaVencimiento, setFechaVencimiento] = useState("");
+  const [cuentaDinero, setCuentaDinero] = useState("");
+  const [receptor, setReceptor] = useState(receptorVacio());
+  const [clienteId, setClienteId] = useState("");
+  const [guardarCliente, setGuardarCliente] = useState(false);
+  const [lineas, setLineas] = useState([lineaVacia("concepto")]);
 
   useEffect(() => {
     cargar();
@@ -48,21 +55,67 @@ export default function FacturacionPage() {
 
   async function cargar() {
     setCargando(true);
-    const [{ data: emp }, { data: cts }, { data: docs }, { data: cls }] = await Promise.all([
-      supabase.from("empresas").select("*").eq("id", empresaId).single(),
-      supabase.from("cuentas").select("*").eq("empresa_id", empresaId).order("codigo"),
-      supabase
-        .from("documentos_dte")
-        .select("*")
-        .eq("empresa_id", empresaId)
-        .order("created_at", { ascending: false }),
-      supabase.from("clientes").select("*").eq("empresa_id", empresaId).order("nombre"),
-    ]);
-    setClientes(cls || []);
-    setEmpresa(emp);
-    setCuentas(cts || []);
-    setDocumentos(docs || []);
+    try {
+      const [prods, { data: cls }, { data: docs }] = await Promise.all([
+        obtenerProductos(empresaId),
+        supabase.from("clientes").select("*").eq("empresa_id", empresaId).order("nombre"),
+        supabase
+          .from("documentos_dte")
+          .select("*")
+          .eq("empresa_id", empresaId)
+          .order("created_at", { ascending: false }),
+      ]);
+      setProductos(prods);
+      setClientes(cls || []);
+      setDocumentos(docs || []);
+      // Si el formulario sigue intacto, la primera línea empieza como producto
+      setLineas((ls) =>
+        ls.length === 1 && !ls[0].producto_id && !ls[0].descripcion && !ls[0].precio
+          ? [lineaVacia(prods.length ? "producto" : "concepto")]
+          : ls
+      );
+    } catch (e) {
+      setError("No se pudieron cargar los datos: " + (e.message || e));
+    }
     setCargando(false);
+  }
+
+  const tipoDocumento = TIPO_DOCUMENTO_VENTA[tipoDte];
+  const esFactura = tipoDte === "01";
+  const requiereCliente = tipoDte === "03" || condicion === "credito";
+  const calculo = useMemo(
+    () => calcularDocumento(cfg, tipoDocumento, lineas),
+    [cfg, tipoDocumento, lineas]
+  );
+
+  const cuentasActivo = useMemo(() => cuentas.filter((c) => c.clase === "Activo"), [cuentas]);
+  const cuentasIngreso = useMemo(() => cuentas.filter((c) => c.clase === "Ingreso"), [cuentas]);
+
+  // Cuentas que Ventas necesita tener configuradas (se configuran en la pestaña Ventas)
+  const faltantes = [];
+  const campoIva = esFactura ? "cuenta_iva_debito_cf_id" : "cuenta_iva_debito_ccf_id";
+  if (!empresa?.[campoIva]) {
+    faltantes.push(esFactura ? "IVA Débito Fiscal — Consumidores finales" : "IVA Débito Fiscal — Contribuyentes (CCF)");
+  }
+  if (lineas.some((l) => l.clase === "producto") && !empresa?.cuenta_ventas_id) {
+    faltantes.push("Ingresos por venta de productos");
+  }
+  if (condicion === "credito" && !empresa?.cuenta_cxc_id) faltantes.push("Cuentas por Cobrar");
+
+  function cambiarLinea(key, cambios) {
+    setLineas((ls) => ls.map((l) => (l.key === key ? { ...l, ...cambios } : l)));
+  }
+
+  async function elegirProducto(key, id) {
+    cambiarLinea(key, { producto_id: id });
+    if (id && !saldos[id]) {
+      try {
+        const mov = await obtenerKardex(id);
+        setSaldos((s) => ({ ...s, [id]: saldoActual(mov) }));
+      } catch {
+        /* la existencia es solo una ayuda visual */
+      }
+    }
   }
 
   function elegirCliente(id) {
@@ -78,234 +131,129 @@ export default function FacturacionPage() {
     });
   }
 
-  function actualizarItem(i, campo, valor) {
-    const copia = [...items];
-    copia[i] = { ...copia[i], [campo]: valor };
-    setItems(copia);
-  }
-
-  function agregarItem() {
-    setItems([...items, lineaVacia()]);
-  }
-
-  function quitarItem(i) {
-    if (items.length <= 1) return;
-    setItems(items.filter((_, idx) => idx !== i));
-  }
-
-  const itemsValidos = items.filter(
-    (it) => it.descripcion.trim() && parseFloat(it.cantidad) > 0 && parseFloat(it.precio_unitario) >= 0
-  );
-  const { itemsCalculados, subtotal, iva, total } =
-    itemsValidos.length > 0 ? calcularTotales(itemsValidos) : { itemsCalculados: [], subtotal: 0, iva: 0, total: 0 };
-
-  async function emitirFactura(e) {
+  async function emitir(e) {
     e.preventDefault();
     setError(null);
-
-    if (!empresa?.nit || !empresa?.nrc) {
-      setError("Completa los datos fiscales del emisor (NIT y NRC) antes de emitir.");
+    setExito(null);
+    if (faltantes.length) {
+      setError(
+        "Configura primero estas cuentas en Ventas, sección Configuración de cuentas: " +
+          faltantes.join(", ") + "."
+      );
       return;
     }
-    if (!receptor.nombre.trim()) {
-      setError("Indica el nombre del receptor.");
-      return;
-    }
-    if (itemsValidos.length === 0) {
-      setError("Agrega al menos un ítem válido (descripción, cantidad y precio).");
-      return;
-    }
-    if (!cuentaCobro || !cuentaIngreso || !cuentaIva) {
-      setError("Selecciona las tres cuentas contables (cobro, ingreso e IVA) para generar el asiento.");
-      return;
-    }
-
     setGuardando(true);
-
-    const correlativo = documentos.filter((d) => d.tipo_dte === tipoDte).length + 1;
-    const numeroControl = generarNumeroControl({
-      tipoDte,
-      codEstablecimiento: empresa.cod_establecimiento,
-      codPuntoVenta: empresa.cod_punto_venta,
-      correlativo,
-    });
-    const codigoGeneracion = generarCodigoGeneracion();
-
-    const jsonDte = construirJsonDte({
+    const res = await emitirDte({
       empresa,
-      tipoDte,
-      numeroControl,
-      codigoGeneracion,
-      fechaEmision: fecha,
-      receptor,
-      itemsCalculados,
-      subtotal,
-      iva,
-      total,
-      formaPago,
+      empresaId,
+      productos,
+      clientes,
+      datos: { tipoDte, fecha, condicion, fechaVencimiento, cuentaDinero, receptor, clienteId, guardarCliente, lineas },
     });
-
-    // 1) Crear el asiento contable (partida doble)
-    const { data: ultimaTrans } = await supabase
-      .from("transacciones")
-      .select("numero_partida")
-      .eq("empresa_id", empresaId)
-      .order("numero_partida", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const numeroPartida = ultimaTrans ? ultimaTrans.numero_partida + 1 : 1;
-
-    const { data: trans, error: errTrans } = await supabase
-      .from("transacciones")
-      .insert({
-        empresa_id: empresaId,
-        fecha,
-        descripcion: `Venta según ${TIPOS_DTE[tipoDte]} ${numeroControl} — ${receptor.nombre}`,
-        numero_partida: numeroPartida,
-      })
-      .select()
-      .single();
-
-    if (errTrans) {
-      setError("No se pudo crear el asiento contable: " + errTrans.message);
-      setGuardando(false);
+    setGuardando(false);
+    if (res.error) {
+      setError(res.error);
       return;
     }
-
-    const { error: errMov } = await supabase.from("movimientos").insert([
-      { transaccion_id: trans.id, cuenta_id: cuentaCobro, debe: total, haber: 0 },
-      { transaccion_id: trans.id, cuenta_id: cuentaIngreso, debe: 0, haber: subtotal },
-      { transaccion_id: trans.id, cuenta_id: cuentaIva, debe: 0, haber: iva },
-    ]);
-
-    if (errMov) {
-      setError("Asiento creado, pero fallaron las líneas: " + errMov.message);
-      setGuardando(false);
-      return;
-    }
-
-    // 2) Guardar el documento DTE, enlazado al asiento
-    const { error: errDoc } = await supabase.from("documentos_dte").insert({
-      empresa_id: empresaId,
-      tipo_dte: tipoDte,
-      numero_control: numeroControl,
-      codigo_generacion: codigoGeneracion,
-      fecha_emision: fecha,
-      forma_pago: formaPago,
-      receptor,
-      items: itemsCalculados,
-      subtotal,
-      iva,
-      total,
-      estado: "generado",
-      json_dte: jsonDte,
-      transaccion_id: trans.id,
-    });
-
-    if (errDoc) {
-      setError("El asiento se creó, pero falló al guardar el documento DTE: " + errDoc.message);
-      setGuardando(false);
-      return;
-    }
-
-    let avisoCliente = null;
-    if (guardarCliente) {
-      const datosCliente = {
-        nombre: receptor.nombre.trim(),
-        nit_dui: receptor.nit_dui.trim() || null,
-        nrc: receptor.nrc.trim() || null,
-        correo: receptor.correo.trim() || null,
-        direccion: receptor.direccion.trim() || null,
-      };
-      // Si no eligió un cliente pero ya existe uno con el mismo nombre, lo actualiza
-      // en vez de crear un duplicado.
-      const idExistente =
-        clienteId ||
-        clientes.find(
-          (c) => (c.nombre || "").trim().toLowerCase() === datosCliente.nombre.toLowerCase()
-        )?.id;
-      const { error: errCli } = idExistente
-        ? await supabase.from("clientes").update(datosCliente).eq("id", idExistente)
-        : await supabase.from("clientes").insert({ ...datosCliente, empresa_id: empresaId });
-      if (errCli) {
-        avisoCliente =
-          "El documento se emitió, pero no se pudo guardar el cliente: " + errCli.message;
-      }
-    }
-
-    setReceptor({ nombre: "", nit_dui: "", nrc: "", correo: "", direccion: "" });
+    setExito(
+      `Documento ${res.numeroControl} emitido (partida N° ${res.numeroPartida}).` +
+        (res.clienteNuevo ? ` Se registró el cliente ${res.clienteNuevo.nombre}.` : "")
+    );
+    setReceptor(receptorVacio());
     setClienteId("");
     setGuardarCliente(false);
-    setAviso(avisoCliente);
-    setItems([lineaVacia()]);
-    setGuardando(false);
-    cargar();
+    setLineas([lineaVacia(productos.length ? "producto" : "concepto")]);
+    setSaldos({});
+    await cargar();
+  }
+
+  async function eliminar(d) {
+    if (
+      !window.confirm(
+        `¿Eliminar el documento ${d.numero_control}?\n\nSe revierten su partida contable, la salida del Kardex y la cuenta por cobrar (si es a crédito).`
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setExito(null);
+    const res = await eliminarDte(d);
+    if (res.error) {
+      setError(res.error);
+      return;
+    }
+    setExito(`Documento ${d.numero_control} eliminado; el inventario y la partida se revirtieron.`);
+    setSaldos({});
+    await cargar();
   }
 
   if (cargando) return <p className="text-inkSoft">Cargando…</p>;
 
-  const cuentasActivo = cuentas.filter((c) => c.clase === "Activo");
-  const cuentasIngreso = cuentas.filter((c) => c.clase === "Ingreso");
-  const cuentasPasivo = cuentas.filter((c) => c.clase === "Pasivo");
-
   return (
     <div className="space-y-10">
-      <DatosEmisor empresa={empresa} onGuardado={(v) => setEmpresa({ ...empresa, ...v })} />
+      <DatosEmisor empresa={empresa} onGuardado={(v) => actualizarEmpresa(v)} />
+
+      {faltantes.length > 0 && (
+        <div className="bg-brass/10 border border-brass/40 rounded-sm px-4 py-3 text-sm">
+          Para emitir este tipo de documento falta configurar: <strong>{faltantes.join(", ")}</strong>.{" "}
+          <Link href={`/empresa/${empresaId}/ventas`} className="underline text-brassDark">
+            Ir a Ventas, Configuración de cuentas
+          </Link>
+        </div>
+      )}
 
       <section className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6">
         <h2 className="font-display text-base font-semibold mb-1">Emitir documento</h2>
         <p className="text-xs text-inkSoft mb-4">
-          Se genera el Código de Generación, el Número de Control y el asiento contable
-          automáticamente. La firma electrónica y transmisión real a Hacienda quedan
-          pendientes hasta que conectes tu certificado digital y credenciales.
+          Al emitir se registra una venta completa: partida con costo de venta, salida del Kardex y,
+          si es a crédito, la cuenta por cobrar. La firma electrónica y la transmisión a Hacienda
+          quedan pendientes hasta que conectes tu certificado digital y credenciales.
         </p>
 
-        <form onSubmit={emitirFactura} className="space-y-5">
+        <form onSubmit={emitir} className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
-              <label className="block text-xs text-inkSoft mb-1">Tipo de documento</label>
-              <select
-                value={tipoDte}
-                onChange={(e) => setTipoDte(e.target.value)}
-                className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm"
-              >
+              <label className={labelCls}>Tipo de documento</label>
+              <select value={tipoDte} onChange={(e) => setTipoDte(e.target.value)} className={inputCls}>
                 {Object.entries(TIPOS_DTE).map(([cod, nom]) => (
                   <option key={cod} value={cod}>{cod} — {nom}</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-inkSoft mb-1">Fecha</label>
-              <input
-                type="date"
-                value={fecha}
-                onChange={(e) => setFecha(e.target.value)}
-                className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm"
-              />
+              <label className={labelCls}>Fecha</label>
+              <input type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} className={inputCls} />
             </div>
             <div>
-              <label className="block text-xs text-inkSoft mb-1">Forma de pago</label>
-              <select
-                value={formaPago}
-                onChange={(e) => setFormaPago(e.target.value)}
-                className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm"
-              >
+              <label className={labelCls}>Forma de pago</label>
+              <select value={condicion} onChange={(e) => setCondicion(e.target.value)} className={inputCls}>
                 <option value="contado">Contado</option>
                 <option value="credito">Crédito</option>
               </select>
             </div>
+            <div>
+              {condicion === "contado" ? (
+                <>
+                  <label className={labelCls}>¿Dónde se recibió el dinero?</label>
+                  <CuentaCombobox cuentas={cuentasActivo} value={cuentaDinero} onChange={setCuentaDinero} />
+                </>
+              ) : (
+                <>
+                  <label className={labelCls}>Fecha de vencimiento</label>
+                  <input type="date" value={fechaVencimiento} onChange={(e) => setFechaVencimiento(e.target.value)} className={inputCls} />
+                </>
+              )}
+            </div>
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide mb-2">
-              Receptor
-            </p>
+            <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide mb-2">Receptor</p>
             <div className="mb-3">
-              <label className="block text-xs text-inkSoft mb-1">Cliente registrado</label>
+              <label className={labelCls}>Cliente registrado</label>
               <select
                 value={clienteId}
                 onChange={(e) => elegirCliente(e.target.value)}
-                className="w-full sm:w-1/2 border border-paperLine rounded-sm px-2 py-2 text-sm"
+                className={`${inputCls} sm:w-1/2`}
               >
                 <option value="">
                   {clientes.length === 0
@@ -314,103 +262,105 @@ export default function FacturacionPage() {
                 </option>
                 {clientes.map((c) => (
                   <option key={c.id} value={c.id}>
-                    {c.nombre}
-                    {c.nit_dui ? ` — ${c.nit_dui}` : ""}
+                    {c.nombre}{c.nit_dui ? ` — ${c.nit_dui}` : ""}
                   </option>
                 ))}
               </select>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <input
-                placeholder="Nombre / Razón social"
-                value={receptor.nombre}
+              <input placeholder="Nombre / Razón social" value={receptor.nombre}
                 onChange={(e) => setReceptor({ ...receptor, nombre: e.target.value })}
-                className="border border-paperLine rounded-sm px-2 py-2 text-sm sm:col-span-2"
-              />
-              <input
-                placeholder="NIT o DUI"
-                value={receptor.nit_dui}
-                onChange={(e) => setReceptor({ ...receptor, nit_dui: e.target.value })}
-                className="border border-paperLine rounded-sm px-2 py-2 text-sm"
-              />
-              <input
-                placeholder="NRC (si aplica)"
-                value={receptor.nrc}
-                onChange={(e) => setReceptor({ ...receptor, nrc: e.target.value })}
-                className="border border-paperLine rounded-sm px-2 py-2 text-sm"
-              />
-              <input
-                placeholder="Correo"
-                value={receptor.correo}
-                onChange={(e) => setReceptor({ ...receptor, correo: e.target.value })}
-                className="border border-paperLine rounded-sm px-2 py-2 text-sm"
-              />
-              <input
-                placeholder="Dirección"
-                value={receptor.direccion}
-                onChange={(e) => setReceptor({ ...receptor, direccion: e.target.value })}
-                className="border border-paperLine rounded-sm px-2 py-2 text-sm"
-              />
+                className={`${inputCls} sm:col-span-2`} />
+              <input placeholder={tipoDte === "03" ? "NIT (obligatorio)" : "NIT o DUI"} value={receptor.nit_dui}
+                onChange={(e) => setReceptor({ ...receptor, nit_dui: e.target.value })} className={inputCls} />
+              <input placeholder={tipoDte === "03" ? "NRC (obligatorio)" : "NRC (si aplica)"} value={receptor.nrc}
+                onChange={(e) => setReceptor({ ...receptor, nrc: e.target.value })} className={inputCls} />
+              <input placeholder="Correo" value={receptor.correo}
+                onChange={(e) => setReceptor({ ...receptor, correo: e.target.value })} className={inputCls} />
+              <input placeholder="Dirección" value={receptor.direccion}
+                onChange={(e) => setReceptor({ ...receptor, direccion: e.target.value })} className={inputCls} />
             </div>
-            <label className="flex items-center gap-2 mt-3 text-sm text-inkSoft">
-              <input
-                type="checkbox"
-                checked={guardarCliente}
-                onChange={(e) => setGuardarCliente(e.target.checked)}
-              />
-              {clienteId
-                ? "Actualizar los datos de este cliente (NIT/DUI, NRC, correo, dirección)"
-                : "Guardar este receptor en mis clientes (también aparecerá en Cuentas por Cobrar)"}
-            </label>
+            {clienteId ? (
+              <label className="flex items-center gap-2 mt-3 text-sm text-inkSoft">
+                <input type="checkbox" checked={guardarCliente} onChange={(e) => setGuardarCliente(e.target.checked)} />
+                Actualizar los datos de este cliente (NIT/DUI, NRC, correo, dirección)
+              </label>
+            ) : requiereCliente ? (
+              <p className="mt-3 text-xs text-inkSoft">
+                Este receptor se registrará como cliente automáticamente (es obligatorio en el
+                Crédito Fiscal y en las ventas a crédito) y aparecerá en Cuentas por Cobrar.
+              </p>
+            ) : (
+              <label className="flex items-center gap-2 mt-3 text-sm text-inkSoft">
+                <input type="checkbox" checked={guardarCliente} onChange={(e) => setGuardarCliente(e.target.checked)} />
+                Guardar este receptor en mis clientes (también aparecerá en Cuentas por Cobrar)
+              </label>
+            )}
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide mb-2">
-              Ítems
-            </p>
-            <div className="grid grid-cols-12 gap-2 text-xs text-inkSoft mb-1 px-1">
-              <span className="col-span-6">Descripción</span>
-              <span className="col-span-2 text-right">Cantidad</span>
-              <span className="col-span-2 text-right">Precio unit.</span>
-              <span className="col-span-2 text-right">Total</span>
-            </div>
+            <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide mb-2">Ítems</p>
             <div className="space-y-2">
-              {items.map((it, i) => {
-                const totalLinea =
-                  (parseFloat(it.cantidad) || 0) * (parseFloat(it.precio_unitario) || 0);
+              {lineas.map((l) => {
+                const existencia = l.clase === "producto" && l.producto_id ? saldos[l.producto_id] : null;
+                const importe = (Number(l.cantidad) || 0) * (Number(l.precio) || 0);
                 return (
-                  <div key={i} className="grid grid-cols-12 gap-2 items-center">
-                    <input
-                      value={it.descripcion}
-                      onChange={(e) => actualizarItem(i, "descripcion", e.target.value)}
-                      placeholder="Descripción del producto o servicio"
-                      className="col-span-6 border border-paperLine rounded-sm px-2 py-2 text-sm"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={it.cantidad}
-                      onChange={(e) => actualizarItem(i, "cantidad", e.target.value)}
-                      className="col-span-2 border border-paperLine rounded-sm px-2 py-2 text-sm text-right font-num"
-                    />
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={it.precio_unitario}
-                      onChange={(e) => actualizarItem(i, "precio_unitario", e.target.value)}
-                      placeholder="0.00"
-                      className="col-span-2 border border-paperLine rounded-sm px-2 py-2 text-sm text-right font-num"
-                    />
-                    <div className="col-span-2 flex items-center justify-between">
-                      <span className="text-sm font-num tabular">{totalLinea.toFixed(2)}</span>
-                      <button
-                        type="button"
-                        onClick={() => quitarItem(i)}
-                        disabled={items.length <= 1}
-                        className="text-xs text-rust hover:underline disabled:opacity-30 ml-2"
+                  <div key={l.key} className="grid grid-cols-12 gap-2 items-start border border-paperLine rounded-sm p-2 bg-paper/40">
+                    <div className="col-span-12 md:col-span-2">
+                      <label className={labelCls}>Tipo</label>
+                      <select
+                        value={l.clase}
+                        onChange={(e) => cambiarLinea(l.key, { clase: e.target.value, producto_id: "", cuenta_id: "" })}
+                        className={inputCls}
                       >
+                        <option value="producto" disabled={productos.length === 0}>Producto</option>
+                        <option value="concepto">Servicio / otro</option>
+                      </select>
+                    </div>
+                    <div className="col-span-12 md:col-span-4">
+                      {l.clase === "producto" ? (
+                        <>
+                          <label className={labelCls}>Producto (Kardex)</label>
+                          <select value={l.producto_id} onChange={(e) => elegirProducto(l.key, e.target.value)} className={inputCls}>
+                            <option value="">Selecciona…</option>
+                            {productos.map((p) => (
+                              <option key={p.id} value={p.id}>{p.codigo ? `${p.codigo} — ` : ""}{p.nombre}</option>
+                            ))}
+                          </select>
+                          {existencia && (
+                            <p className="text-xs text-inkSoft mt-1">
+                              Existencia: <span className="font-num">{existencia.cantidad}</span>
+                              {" · "}Costo prom.: <span className="font-num">{formatoMoneda(existencia.costoUnitario)}</span>
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <label className={labelCls}>Cuenta de ingreso</label>
+                          <CuentaCombobox cuentas={cuentasIngreso} value={l.cuenta_id} onChange={(id) => cambiarLinea(l.key, { cuenta_id: id })} />
+                          <input value={l.descripcion} onChange={(e) => cambiarLinea(l.key, { descripcion: e.target.value })}
+                            placeholder="Descripción (ej. Asesoría contable)" className={`${inputCls} mt-1`} />
+                        </>
+                      )}
+                    </div>
+                    <div className="col-span-4 md:col-span-2">
+                      <label className={labelCls}>Cantidad</label>
+                      <input type="number" step="any" min="0" value={l.cantidad}
+                        onChange={(e) => cambiarLinea(l.key, { cantidad: e.target.value })} className={`${inputCls} font-num text-right`} />
+                    </div>
+                    <div className="col-span-4 md:col-span-2">
+                      <label className={labelCls}>{esFactura ? "Precio con IVA" : "Precio sin IVA"}</label>
+                      <input type="number" step="any" min="0" value={l.precio}
+                        onChange={(e) => cambiarLinea(l.key, { precio: e.target.value })} className={`${inputCls} font-num text-right`} />
+                    </div>
+                    <div className="col-span-3 md:col-span-1">
+                      <label className={labelCls}>Importe</label>
+                      <p className="font-num text-sm text-right py-1.5">{formatoMoneda(importe)}</p>
+                    </div>
+                    <div className="col-span-1 md:col-span-1 pt-5 text-right">
+                      <button type="button" disabled={lineas.length <= 1}
+                        onClick={() => setLineas((ls) => ls.filter((x) => x.key !== l.key))}
+                        className="text-xs text-rust hover:underline disabled:opacity-30">
                         Quitar
                       </button>
                     </div>
@@ -418,61 +368,26 @@ export default function FacturacionPage() {
                 );
               })}
             </div>
-            <button
-              type="button"
-              onClick={agregarItem}
-              className="text-xs text-brassDark hover:underline mt-2"
-            >
+            <button type="button" onClick={() => setLineas((ls) => [...ls, lineaVacia(productos.length ? "producto" : "concepto")])}
+              className="text-xs text-brassDark hover:underline mt-2">
               + Agregar ítem
             </button>
           </div>
 
           <div className="flex justify-end">
-            <div className="w-full sm:w-64 text-sm space-y-1 font-num tabular">
-              <div className="flex justify-between"><span className="font-body">Subtotal</span><span>{subtotal.toFixed(2)}</span></div>
-              <div className="flex justify-between"><span className="font-body">IVA (13%)</span><span>{iva.toFixed(2)}</span></div>
-              <div className="flex justify-between font-semibold border-t border-paperLine pt-1"><span className="font-body">Total</span><span>{total.toFixed(2)}</span></div>
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide mb-2">
-              Cuentas contables para el asiento automático
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs text-inkSoft mb-1">Cobro (Debe)</label>
-                <select value={cuentaCobro} onChange={(e) => setCuentaCobro(e.target.value)} className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm">
-                  <option value="">Efectivo / Cliente…</option>
-                  {cuentasActivo.map((c) => <option key={c.id} value={c.id}>{c.codigo} — {c.nombre}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-inkSoft mb-1">Ingreso (Haber)</label>
-                <select value={cuentaIngreso} onChange={(e) => setCuentaIngreso(e.target.value)} className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm">
-                  <option value="">Ventas / Servicios…</option>
-                  {cuentasIngreso.map((c) => <option key={c.id} value={c.id}>{c.codigo} — {c.nombre}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-inkSoft mb-1">IVA Débito Fiscal (Haber)</label>
-                <select value={cuentaIva} onChange={(e) => setCuentaIva(e.target.value)} className="w-full border border-paperLine rounded-sm px-2 py-2 text-sm">
-                  <option value="">IVA por pagar…</option>
-                  {cuentasPasivo.map((c) => <option key={c.id} value={c.id}>{c.codigo} — {c.nombre}</option>)}
-                </select>
-              </div>
+            <div className="w-full sm:w-72 text-sm space-y-1 font-num tabular">
+              <div className="flex justify-between"><span className="font-body">Subtotal (sin IVA)</span><span>{formatoMoneda(calculo.subtotal)}</span></div>
+              <div className="flex justify-between"><span className="font-body">{esFactura ? "IVA (13%) incluido" : "IVA (13%)"}</span><span>{formatoMoneda(calculo.iva)}</span></div>
+              <div className="flex justify-between font-semibold border-t border-paperLine pt-1"><span className="font-body">Total</span><span>{formatoMoneda(calculo.total)}</span></div>
             </div>
           </div>
 
           {error && <p className="text-sm text-rust">{error}</p>}
-          {aviso && <p className="text-sm text-brassDark">{aviso}</p>}
+          {exito && <p className="text-sm text-ledger">{exito}</p>}
 
-          <button
-            type="submit"
-            disabled={guardando}
-            className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] disabled:opacity-60"
-          >
-            {guardando ? "Generando…" : "Generar documento y asiento contable"}
+          <button type="submit" disabled={guardando}
+            className="bg-ink text-paper px-4 py-2 rounded-sm text-sm font-medium hover:bg-[#2C3A52] disabled:opacity-60">
+            {guardando ? "Emitiendo…" : "Emitir documento"}
           </button>
         </form>
       </section>
@@ -482,7 +397,7 @@ export default function FacturacionPage() {
         {documentos.length === 0 ? (
           <p className="text-inkSoft text-sm">Aún no se ha emitido ningún documento.</p>
         ) : (
-          <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-hidden">
+          <div className="bg-[#F7F4EA] border border-paperLine rounded-sm overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-xs text-inkSoft border-b border-paperLine">
@@ -501,19 +416,22 @@ export default function FacturacionPage() {
                       <td className="px-4 py-2 font-num text-xs">{d.numero_control}</td>
                       <td className="px-4 py-2">{d.receptor?.nombre}</td>
                       <td className="px-4 py-2 font-num">{d.fecha_emision}</td>
-                      <td className="px-4 py-2 text-right font-num tabular">{Number(d.total).toFixed(2)}</td>
+                      <td className="px-4 py-2 text-right font-num tabular">{formatoMoneda(d.total)}</td>
                       <td className="px-4 py-2">
                         <span className="text-xs px-2 py-1 rounded-sm bg-brass/20 text-brassDark">
                           {d.estado === "generado" ? "Generado (sin firmar)" : d.estado}
                         </span>
                       </td>
-                      <td className="px-4 py-2 text-right">
-                        <button
-                          onClick={() => setVerJsonId(verJsonId === d.id ? null : d.id)}
-                          className="text-xs text-brassDark hover:underline"
-                        >
+                      <td className="px-4 py-2 text-right whitespace-nowrap">
+                        <button onClick={() => setVerJsonId(verJsonId === d.id ? null : d.id)}
+                          className="text-xs text-brassDark hover:underline mr-3">
                           {verJsonId === d.id ? "Ocultar JSON" : "Ver JSON"}
                         </button>
+                        {d.estado === "generado" && (
+                          <button onClick={() => eliminar(d)} className="text-xs text-rust hover:underline">
+                            Eliminar
+                          </button>
+                        )}
                       </td>
                     </tr>
                     {verJsonId === d.id && (
