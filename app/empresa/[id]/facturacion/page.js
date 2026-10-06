@@ -5,6 +5,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useEmpresa } from "@/lib/EmpresaContext";
 import DatosEmisor from "@/components/DatosEmisor";
+import SelectorActividad from "@/components/SelectorActividad";
+import SelectorUbicacion from "@/components/SelectorUbicacion";
 import CuentaCombobox from "@/lib/CuentaCombobox";
 import { obtenerProductos, obtenerKardex, saldoActual } from "@/lib/kardex";
 import { configVC, calcularDocumento } from "@/lib/ventasCompras";
@@ -16,6 +18,7 @@ const hoy = () => new Date().toISOString().slice(0, 10);
 const receptorVacio = () => ({
   nombre: "", nombre_comercial: "", tipo_documento: "nit", nit_dui: "", nrc: "",
   cod_actividad: "", desc_actividad: "", telefono: "", correo: "", direccion: "",
+  cod_departamento: "", cod_municipio: "", cod_distrito: "",
 });
 let contadorLineas = 0;
 function lineaVacia(clase) {
@@ -136,6 +139,9 @@ export default function FacturacionPage() {
       telefono: c.telefono || "",
       correo: c.correo || "",
       direccion: c.direccion || "",
+      cod_departamento: c.cod_departamento || "",
+      cod_municipio: c.cod_municipio || "",
+      cod_distrito: c.cod_distrito || "",
     });
   }
 
@@ -191,7 +197,7 @@ export default function FacturacionPage() {
     try {
       const { generarPdfDte } = await import("@/lib/dtePdf");
       const bytes = await generarPdfDte(d.json_dte, { estado: d.estado });
-      descargar(new Blob([bytes], { type: "application/pdf" }), `${d.numero_control}.pdf`);
+      descargar(new Blob([bytes], { type: "application/pdf" }), `${d.codigo_generacion}.pdf`);
     } catch (e) {
       setError("No se pudo generar el PDF: " + (e.message || e));
     }
@@ -347,16 +353,13 @@ export default function FacturacionPage() {
               </div>
               {!esFactura && (
                 <>
-                  <div>
-                    <label className={labelCls}>Código de actividad económica</label>
-                    <input placeholder="5 o 6 caracteres" value={receptor.cod_actividad}
-                      onChange={(e) => setReceptor({ ...receptor, cod_actividad: e.target.value })} className={inputCls} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label className={labelCls}>Actividad económica</label>
-                    <input placeholder="Actividad económica del cliente" value={receptor.desc_actividad}
-                      onChange={(e) => setReceptor({ ...receptor, desc_actividad: e.target.value })} className={inputCls} />
-                  </div>
+                  <SelectorActividad
+                    codigo={receptor.cod_actividad}
+                    descripcion={receptor.desc_actividad}
+                    onChange={(v) => setReceptor({ ...receptor, ...v })}
+                    requerido
+                    className="sm:col-span-3"
+                  />
                 </>
               )}
               <div>
@@ -369,9 +372,16 @@ export default function FacturacionPage() {
                 <input placeholder="Correo" value={receptor.correo}
                   onChange={(e) => setReceptor({ ...receptor, correo: e.target.value })} className={inputCls} />
               </div>
-              <div>
-                <label className={labelCls}>Dirección</label>
-                <input placeholder="Dirección" value={receptor.direccion}
+              <SelectorUbicacion
+                departamento={receptor.cod_departamento}
+                municipio={receptor.cod_municipio}
+                distrito={receptor.cod_distrito}
+                onChange={(v) => setReceptor({ ...receptor, ...v })}
+                requerido={!esFactura}
+              />
+              <div className="sm:col-span-3">
+                <label className={labelCls}>Dirección complementaria (calle, colonia, número){!esFactura ? " *" : ""}</label>
+                <input placeholder="Dirección complementaria" value={receptor.direccion}
                   onChange={(e) => setReceptor({ ...receptor, direccion: e.target.value })} className={inputCls} />
               </div>
             </div>
