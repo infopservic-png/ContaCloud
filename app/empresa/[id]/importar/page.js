@@ -31,6 +31,7 @@ export default function ImportarPage() {
   const [cuentaConcepto, setCuentaConcepto] = useState("");
   const [cuentaDinero, setCuentaDinero] = useState("");
   const [permitirNoValidos, setPermitirNoValidos] = useState(false);
+  const [permitirOtroNit, setPermitirOtroNit] = useState(false);
   const [procesando, setProcesando] = useState(false);
   const [avance, setAvance] = useState({ hechos: 0, total: 0 });
   const [resultados, setResultados] = useState(null);
@@ -76,7 +77,7 @@ export default function ImportarPage() {
       const entidades = soloValidar ? [] : await obtenerEntidades(cfg, empresaId);
       const res = await procesarLote(
         archivos,
-        { modo: soloValidar ? "venta" : modo, empresa, empresaId, entidades, cuentaConcepto, cuentaDinero, soloValidar, permitirNoValidos },
+        { modo: soloValidar ? "venta" : modo, empresa, empresaId, entidades, cuentaConcepto, cuentaDinero, soloValidar, permitirNoValidos, permitirOtroNit },
         (hechos, total) => setAvance({ hechos, total })
       );
       setResultados(res);
@@ -170,6 +171,10 @@ export default function ImportarPage() {
           </div>
         )}
 
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={permitirOtroNit} onChange={(e) => setPermitirOtroNit(e.target.checked)} />
+          Importar aunque el NIT del documento no coincida con el de esta empresa
+        </label>
         {hayEsquemas() && (
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={permitirNoValidos} onChange={(e) => setPermitirNoValidos(e.target.checked)} />
