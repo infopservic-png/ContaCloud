@@ -31,6 +31,59 @@ export default function TransaccionesPage() {
 
   const [partidas, setPartidas] = useState([]);
   const [cargandoPartidas, setCargandoPartidas] = useState(true);
+  const [orden, setOrden] = useState("numero"); // "numero" | "fecha"
+  const [renumerando, setRenumerando] = useState(false);
+
+  const partidasOrdenadas = useMemo(() => {
+    const copia = [...partidas];
+    if (orden === "fecha") {
+      copia.sort(
+        (a, b) =>
+          String(a.fecha).localeCompare(String(b.fecha)) || a.numero_partida - b.numero_partida
+      );
+    } else {
+      copia.sort((a, b) => a.numero_partida - b.numero_partida);
+    }
+    return copia;
+  }, [partidas, orden]);
+
+  // Renumera 1..N siguiendo el orden cronológico (fecha y, a igual fecha, el número actual).
+  async function renumerarPorFecha() {
+    const cronologicas = [...partidas].sort(
+      (a, b) =>
+        String(a.fecha).localeCompare(String(b.fecha)) || a.numero_partida - b.numero_partida
+    );
+    const cambios = cronologicas
+      .map((p, i) => ({ id: p.id, de: p.numero_partida, a: i + 1 }))
+      .filter((c) => c.de !== c.a);
+    if (cambios.length === 0) {
+      alert("Las partidas ya están numeradas en orden de fecha.");
+      return;
+    }
+    if (
+      !confirm(
+        `Se renumerarán ${cambios.length} partida(s) según su fecha (1 a ${cronologicas.length}). ` +
+          "Los números cambiarán en el Diario, el Mayor y los reportes. ¿Continuar?"
+      )
+    )
+      return;
+    setRenumerando(true);
+    try {
+      for (const c of cambios) {
+        const { error: err } = await supabase
+          .from("transacciones")
+          .update({ numero_partida: c.a })
+          .eq("id", c.id);
+        if (err) throw err;
+      }
+      setOrden("numero");
+    } catch (err) {
+      alert("No se pudo renumerar: " + err.message);
+    } finally {
+      setRenumerando(false);
+      cargarPartidas();
+    }
+  }
 
   async function cargarPartidas() {
     setCargandoPartidas(true);
@@ -437,12 +490,29 @@ export default function TransaccionesPage() {
       </div>
 
       {partidas.length > 0 && (
-        <button
-          onClick={exportarDiario}
-          className="text-xs text-ledgerDark hover:underline no-print mb-4 inline-block"
-        >
-          Exportar a Excel
-        </button>
+        <div className="flex flex-wrap items-center gap-4 mb-4 no-print text-xs">
+          <button onClick={exportarDiario} className="text-ledgerDark hover:underline">
+            Exportar a Excel
+          </button>
+          <label className="flex items-center gap-1.5 text-inkSoft">
+            Ordenar por
+            <select
+              value={orden}
+              onChange={(e) => setOrden(e.target.value)}
+              className="border border-paperLine rounded-sm px-2 py-1 bg-white text-ink"
+            >
+              <option value="numero">N.° de partida</option>
+              <option value="fecha">Fecha</option>
+            </select>
+          </label>
+          <button
+            onClick={renumerarPorFecha}
+            disabled={renumerando}
+            className="text-accentDark font-medium hover:underline disabled:opacity-50"
+          >
+            {renumerando ? "Renumerando…" : "Ordenar por fecha y renumerar"}
+          </button>
+        </div>
       )}
 
       {cargandoPartidas ? (
@@ -451,7 +521,7 @@ export default function TransaccionesPage() {
         <p className="text-inkSoft text-sm">Todavía no hay partidas registradas.</p>
       ) : (
         <div className="space-y-4">
-          {partidas.map((p) => {
+          {partidasOrdenadas.map((p) => {
             const subDebe = p.movimientos.reduce((a, m) => a + Number(m.debe), 0);
             const subHaber = p.movimientos.reduce((a, m) => a + Number(m.haber), 0);
             return (
