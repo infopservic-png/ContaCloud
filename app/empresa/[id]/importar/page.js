@@ -32,6 +32,7 @@ export default function ImportarPage() {
   const [cuentaDinero, setCuentaDinero] = useState("");
   const [permitirNoValidos, setPermitirNoValidos] = useState(false);
   const [permitirOtroNit, setPermitirOtroNit] = useState(false);
+  const [crearNuevos, setCrearNuevos] = useState(true);
   const [procesando, setProcesando] = useState(false);
   const [avance, setAvance] = useState({ hechos: 0, total: 0 });
   const [resultados, setResultados] = useState(null);
@@ -77,7 +78,7 @@ export default function ImportarPage() {
       const entidades = soloValidar ? [] : await obtenerEntidades(cfg, empresaId);
       const res = await procesarLote(
         archivos,
-        { modo: soloValidar ? "venta" : modo, empresa, empresaId, entidades, cuentaConcepto, cuentaDinero, soloValidar, permitirNoValidos, permitirOtroNit },
+        { modo: soloValidar ? "venta" : modo, empresa, empresaId, entidades, cuentaConcepto, cuentaDinero, soloValidar, permitirNoValidos, permitirOtroNit, crearNuevos },
         (hechos, total) => setAvance({ hechos, total })
       );
       setResultados(res);
@@ -171,6 +172,17 @@ export default function ImportarPage() {
           </div>
         )}
 
+        {!soloValidar && (
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" className="mt-1" checked={crearNuevos} onChange={(e) => setCrearNuevos(e.target.checked)} />
+            <span>
+              Crear automáticamente el {modo === "compra" ? "proveedor" : "cliente"} si no está registrado
+              <span className="block text-xs text-inkSoft">
+                Se crea con los datos del JSON: nombre, NIT o DUI, NRC, actividad económica, giro, dirección, teléfono y correo. Queda como «Real» y puedes completarlo después en su ficha.
+              </span>
+            </span>
+          </label>
+        )}
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={permitirOtroNit} onChange={(e) => setPermitirOtroNit(e.target.checked)} />
           Importar aunque el NIT del documento no coincida con el de esta empresa
