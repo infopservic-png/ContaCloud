@@ -12,7 +12,7 @@ const num = td + " text-right font-num tabular whitespace-nowrap";
 export default function LibroCompras({ empresa, mes, anio, folio, libro }) {
   const { filas, totales } = libro;
   const f6 = String(folio).padStart(6, "0");
-  const valores = (x) => [x.exentasInternas, x.exentasImportaciones, x.gravadasInternas, x.gravadasImportaciones, x.creditoFiscal, x.retencion, x.totalCompras, x.retenidoTerceros, x.sujetosExcluidos];
+  const valores = (x) => [x.exentasInternas, x.exentasImportaciones, x.gravadasInternas, x.gravadasImportaciones, x.creditoFiscal, x.fovialCotrans, x.retencion, x.totalCompras, x.retenidoTerceros, x.sujetosExcluidos];
 
   return (
     <div className="libro-oficial bg-white text-black border border-paperLine p-4 overflow-x-auto" style={{ fontFamily: "Arial, Helvetica, sans-serif" }}>
@@ -39,6 +39,7 @@ export default function LibroCompras({ empresa, mes, anio, folio, libro }) {
             <th rowSpan={2} className={th}>NOMBRE DEL PROVEEDOR</th>
             <th colSpan={2} className={th}>COMPRAS EXENTAS</th>
             <th colSpan={3} className={th}>COMPRAS GRAVADAS</th>
+            <th rowSpan={2} className={th}>FOVIAL<br />Y<br />COTRANS</th>
             <th rowSpan={2} className={th}>RET. 1%<br />Y 2%<br />A/C</th>
             <th rowSpan={2} className={th}>TOTAL<br />COMPRAS</th>
             <th rowSpan={2} className={th}>IMPUESTO<br />RETENIDO<br />A<br />TERCEROS</th>
@@ -58,7 +59,7 @@ export default function LibroCompras({ empresa, mes, anio, folio, libro }) {
               <td className={td + " text-center"}>0</td>
               <td className={td}>/ /</td>
               <td colSpan={4} />
-              {Array(9).fill(0).map((_, i) => <td key={i} className={num}>{m(0)}</td>)}
+              {Array(10).fill(0).map((_, i) => <td key={i} className={num}>{m(0)}</td>)}
             </tr>
           )}
           {filas.map((f) => (
