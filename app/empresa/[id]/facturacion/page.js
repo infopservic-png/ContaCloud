@@ -129,7 +129,7 @@ export default function FacturacionPage() {
     const c = clientes.find((x) => x.id === id);
     if (!c) return;
     setReceptor({
-      nombre: c.nombre || "",
+      nombre: c.nombre_hacienda || c.nombre || "",
       nombre_comercial: c.nombre_comercial || "",
       tipo_documento: c.tipo_documento === "dui" ? "dui" : "nit",
       nit_dui: c.nit_dui || "",
