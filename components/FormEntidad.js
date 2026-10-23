@@ -5,6 +5,29 @@ import SelectorActividad from "@/components/SelectorActividad";
 import SelectorUbicacion from "@/components/SelectorUbicacion";
 import { formatoMoneda } from "@/lib/contabilidad";
 
+// Listas de la ficha de cliente (misma numeración que el sistema contable de referencia)
+const OPERACION_CLIENTE = [
+  ["0", "0 Ninguno"],
+  ["1", "1 Gravada"],
+  ["2", "2 No gravada o exento"],
+  ["3", "3 Excluido o no constituye renta"],
+  ["4", "4 Mixta"],
+];
+const TIPO_INGRESO = [
+  ["0", "0 Ninguno"],
+  ["1", "1 Profesiones, artes y oficios"],
+  ["2", "2 Actividades de servicios"],
+  ["3", "3 Actividades comerciales"],
+  ["4", "4 Actividades industriales"],
+  ["5", "5 Actividades agropecuarias"],
+  ["6", "6 Utilidades y dividendos"],
+];
+const OPERACION_PROVEEDOR = [
+  ["gravada", "Gravada"],
+  ["exenta", "Exenta"],
+  ["no_sujeta", "No sujeta"],
+];
+
 const inputCls = "w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm bg-white";
 // Los campos que exige el DTE llevan la etiqueta en rojo, como en los sistemas contables comerciales.
 const reqCls = "block text-xs font-medium text-rust mb-1";
@@ -189,22 +212,28 @@ export default function FormEntidad({ tipo = "cliente", v, set, error, guardando
               {prov ? "Se aplica retención al pagarle" : "Aplica retención al facturar"}
             </label>
 
-            {prov && (
-              <>
-                <Campo etiqueta="Tipo de operación" className="sm:col-span-2">
-                  <select value={v.tipo_operacion} onChange={(e) => set({ tipo_operacion: e.target.value })} className={inputCls}>
-                    <option value="gravada">Gravada</option>
-                    <option value="exenta">Exenta</option>
-                    <option value="no_sujeta">No sujeta</option>
-                  </select>
-                </Campo>
-                <Campo etiqueta="Clasificación" className="sm:col-span-2">
-                  <select value={v.clasificacion} onChange={(e) => set({ clasificacion: e.target.value })} className={inputCls}>
-                    <option value="gasto">Gasto</option>
-                    <option value="costo">Costo</option>
-                  </select>
-                </Campo>
-              </>
+            <Campo etiqueta="Tipo de operación" className="sm:col-span-2">
+              <select value={v.tipo_operacion} onChange={(e) => set({ tipo_operacion: e.target.value })} className={inputCls}>
+                {(prov ? OPERACION_PROVEEDOR : OPERACION_CLIENTE).map(([val, txt]) => (
+                  <option key={val} value={val}>{txt}</option>
+                ))}
+              </select>
+            </Campo>
+            {prov ? (
+              <Campo etiqueta="Clasificación" className="sm:col-span-2">
+                <select value={v.clasificacion} onChange={(e) => set({ clasificacion: e.target.value })} className={inputCls}>
+                  <option value="gasto">Gasto</option>
+                  <option value="costo">Costo</option>
+                </select>
+              </Campo>
+            ) : (
+              <Campo etiqueta="Tipo de ingreso" className="sm:col-span-2">
+                <select value={v.tipo_ingreso} onChange={(e) => set({ tipo_ingreso: e.target.value })} className={inputCls}>
+                  {TIPO_INGRESO.map(([val, txt]) => (
+                    <option key={val} value={val}>{txt}</option>
+                  ))}
+                </select>
+              </Campo>
             )}
             <Campo etiqueta={`Tipo de ${nombreTipo}`} className="sm:col-span-4">
               <div className="flex flex-wrap gap-4 py-1.5 text-sm">
