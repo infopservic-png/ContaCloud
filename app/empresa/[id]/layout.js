@@ -14,6 +14,8 @@ const TABS = [
   { href: "ventas", label: "Ventas" },
   { href: "compras", label: "Compras" },
   { href: "facturacion", label: "Facturación DTE" },
+  { href: "libros", label: "Libros de IVA" },
+  { href: "importar", label: "Importar DTE" },
   { href: "kardex", label: "Kardex" },
   { href: "cxc", label: "Cuentas por Cobrar" },
   { href: "cxp", label: "Cuentas por Pagar" },
