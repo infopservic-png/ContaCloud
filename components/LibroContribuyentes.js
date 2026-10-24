@@ -1,7 +1,7 @@
 "use client";
 
 import { formatoMoneda } from "@/lib/contabilidad";
-import { formatoNit, formatoNrc, fechaCorta } from "@/lib/libros";
+import { formatoNit, formatoNrc, fechaCorta2 } from "@/lib/libros";
 
 const m = (n) => formatoMoneda(n);
 const th = "border border-black px-1 py-1 font-normal text-center align-bottom";
@@ -68,7 +68,7 @@ export default function LibroContribuyentes({ empresa, mes, anio, folio, libro }
           {filas.map((f) => (
             <tr key={f.id}>
               <td className={td + " text-center"}>{f.n}</td>
-              <td className={td + " whitespace-nowrap"}>{fechaCorta(f.fecha)}</td>
+              <td className={td + " whitespace-nowrap"}>{fechaCorta2(f.fecha)}</td>
               <td className={td + " break-all"}>{f.correlativo}</td>
               <td className={td}>{f.serie}</td>
               <td className={td + " break-all"}>{f.control}</td>
