@@ -34,7 +34,7 @@ export default function RecuperarPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
+    <main className="min-h-screen flex items-center justify-center px-4 sac-escritorio">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl font-semibold text-ink">
@@ -43,7 +43,7 @@ export default function RecuperarPage() {
           <p className="text-inkSoft mt-1 text-sm">Recuperar contraseña</p>
         </div>
 
-        <div className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6 shadow-sm">
+        <div className="sac-ventana p-6" data-titulo="ContaCloud — Recuperar contraseña">
           {enviado ? (
             <div className="space-y-4">
               <p className="text-sm text-ink">
@@ -79,7 +79,7 @@ export default function RecuperarPage() {
               <button
                 type="submit"
                 disabled={cargando}
-                className="w-full bg-brand text-onBrand py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
+                className="w-full py-2 sac-btn sac-btn-primario font-medium"
               >
                 {cargando ? "Enviando…" : "Enviar enlace"}
               </button>

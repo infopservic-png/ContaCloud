@@ -71,7 +71,7 @@ export default function RestablecerPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center px-4">
+    <main className="min-h-screen flex items-center justify-center px-4 sac-escritorio">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl font-semibold text-ink">
@@ -80,7 +80,7 @@ export default function RestablecerPage() {
           <p className="text-inkSoft mt-1 text-sm">Crear contraseña nueva</p>
         </div>
 
-        <div className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6 shadow-sm">
+        <div className="sac-ventana p-6" data-titulo="ContaCloud — Crear contraseña nueva">
           {estado === "verificando" && (
             <p className="text-sm text-inkSoft">Verificando el enlace…</p>
           )}
@@ -92,7 +92,7 @@ export default function RestablecerPage() {
               </p>
               <Link
                 href="/recuperar"
-                className="block w-full text-center bg-brand text-onBrand py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors"
+                className="block w-full text-center py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors"
               >
                 Solicitar un enlace nuevo
               </Link>
@@ -141,7 +141,7 @@ export default function RestablecerPage() {
               <button
                 type="submit"
                 disabled={guardando}
-                className="w-full bg-brand text-onBrand py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
+                className="w-full py-2 sac-btn sac-btn-primario font-medium"
               >
                 {guardando ? "Guardando…" : "Guardar contraseña"}
               </button>

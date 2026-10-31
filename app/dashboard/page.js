@@ -114,150 +114,137 @@ export default function Dashboard() {
     );
   }
 
+  const fmtFecha = (f) => {
+    if (!f) return "";
+    const d = new Date(f);
+    return isNaN(d) ? "" : d.toLocaleDateString("es-SV", { day: "2-digit", month: "2-digit", year: "numeric" });
+  };
+
   return (
-    <main className="min-h-screen px-6 py-10 max-w-3xl mx-auto">
-      <header className="flex items-center justify-between mb-10">
-        <div>
-          <h1 className="font-display text-2xl font-semibold">
-            <Marca />
-          </h1>
-          <p className="text-inkSoft text-sm">{usuario?.email}</p>
-        </div>
-        <div className="flex items-center gap-5">
-          <Link href="/perfil" className="text-sm text-accentDark hover:underline">
-            Mi perfil
-          </Link>
-          <button
-            onClick={cerrarSesion}
-            className="text-sm text-inkSoft hover:text-ink underline underline-offset-2"
+    <main className="min-h-screen px-4 py-8 sac-escritorio">
+      <div className="max-w-4xl mx-auto space-y-5">
+        <div className="sac-ventana p-0" style={{ paddingTop: 0 }}>
+          <div
+            className="px-3 py-1.5 text-xs font-semibold flex items-center justify-between"
+            style={{ background: "linear-gradient(to bottom, rgb(var(--brand-dark)), rgb(var(--brand)))", color: "rgb(var(--on-brand))" }}
           >
-            Cerrar sesión
-          </button>
-        </div>
-      </header>
+            <span><Marca tamano="sm" className="!gap-2" /> — Selección de empresa</span>
+            <span className="font-normal opacity-80">{usuario?.email}</span>
+          </div>
 
-      {admin && (
-        <div className="mb-8 bg-accent/10 border border-accent/40 rounded-sm px-4 py-3 flex items-center justify-between">
-          <span className="text-sm">
-            Tienes acceso de administrador: puedes ver (solo lectura) las
-            empresas de todos los usuarios.
-          </span>
-          <button
-            onClick={() => router.push("/admin")}
-            className="text-sm font-medium text-accentDark hover:underline whitespace-nowrap ml-4"
-          >
-            Panel de administrador →
-          </button>
-        </div>
-      )}
+          {/* Barra de herramientas */}
+          <div className="flex flex-wrap items-center gap-2 px-3 py-2 border-b border-[#a9a496] bg-[#E2DFD6]">
+            <Link href="/perfil" className="sac-btn">Mi perfil</Link>
+            {admin && (
+              <button onClick={() => router.push("/admin")} className="sac-btn">Panel de administrador</button>
+            )}
+            <span className="flex-1" />
+            <button onClick={cerrarSesion} className="sac-btn">Cerrar sesión</button>
+          </div>
 
-      <section className="mb-10">
-        <h2 className="font-display text-lg font-semibold mb-4">
-          Tus empresas de práctica
-        </h2>
-        {empresas.length === 0 ? (
-          <p className="text-inkSoft text-sm">
-            Aún no has creado ninguna empresa. Crea la primera abajo para
-            empezar a practicar.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {empresas.map((emp) => (
-              <li
-                key={emp.id}
-                className="bg-[#F7F4EA] border border-paperLine rounded-sm px-4 py-3 flex items-center justify-between hover:border-accent transition-colors"
-              >
-                <button
-                  onClick={() => router.push(`/empresa/${emp.id}/transacciones`)}
-                  className="flex-1 text-left flex items-center gap-3"
-                >
-                  <span className="font-medium">{emp.nombre}</span>
-                  <span
-                    className={`text-xs px-2 py-1 rounded-sm ${
-                      emp.tipo === "comercial"
-                        ? "bg-accent/20 text-accentDark"
-                        : "bg-ledger/20 text-ledgerDark"
-                    }`}
+          {admin && (
+            <p className="px-3 py-1.5 text-xs bg-accent/10 border-b border-accent/30">
+              Acceso de administrador: puedes ver (solo lectura) las empresas de todos los usuarios.
+            </p>
+          )}
+
+          {/* Cuadrícula de empresas */}
+          <div className="p-3">
+            <table className="w-full text-sm bg-white border border-[#7a828f]">
+              <thead>
+                <tr className="bg-[#DAD7CD] text-left text-xs">
+                  <th className="px-3 py-1.5 border border-[#a9a496] w-12 text-center">No.</th>
+                  <th className="px-3 py-1.5 border border-[#a9a496]">Empresa</th>
+                  <th className="px-3 py-1.5 border border-[#a9a496] w-28">Tipo</th>
+                  <th className="px-3 py-1.5 border border-[#a9a496] w-28">Creada</th>
+                  <th className="px-3 py-1.5 border border-[#a9a496] w-36 text-center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {empresas.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-6 text-center text-inkSoft text-xs">
+                      Aún no has creado ninguna empresa. Crea la primera en el recuadro de abajo.
+                    </td>
+                  </tr>
+                )}
+                {empresas.map((emp, i) => (
+                  <tr
+                    key={emp.id}
+                    onDoubleClick={() => router.push(`/empresa/${emp.id}/transacciones`)}
+                    className={`cursor-pointer hover:bg-[#DCE6F4] ${i % 2 ? "bg-[#F4F2EC]" : "bg-white"}`}
                   >
-                    {emp.tipo === "comercial" ? "Comercial" : "Servicio"}
-                  </span>
-                </button>
-                <button
-                  onClick={() => eliminarEmpresa(emp)}
-                  className="text-xs text-rust hover:underline ml-4 whitespace-nowrap"
-                >
-                  Eliminar
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6">
-        <h2 className="font-display text-lg font-semibold mb-4">
-          Crear nueva empresa de práctica
-        </h2>
-        <form onSubmit={crearEmpresa} className="space-y-4">
-          <div>
-            <label className="block text-xs font-medium text-inkSoft mb-1">
-              Nombre de la empresa
-            </label>
-            <input
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-              placeholder="Ej. Comercial El Roble, S.A."
-              className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
-            />
+                    <td className="px-3 py-1.5 border border-[#d3d0c6] text-center text-xs">{i + 1}</td>
+                    <td className="px-3 py-1.5 border border-[#d3d0c6] font-medium">{emp.nombre}</td>
+                    <td className="px-3 py-1.5 border border-[#d3d0c6] text-xs">
+                      {emp.tipo === "comercial" ? "Comercial" : "Servicio"}
+                    </td>
+                    <td className="px-3 py-1.5 border border-[#d3d0c6] text-xs">{fmtFecha(emp.created_at)}</td>
+                    <td className="px-2 py-1 border border-[#d3d0c6] text-center whitespace-nowrap">
+                      <button onClick={() => router.push(`/empresa/${emp.id}/transacciones`)} className="sac-btn sac-btn-primario !py-0.5 !px-3 text-xs">
+                        Abrir
+                      </button>{" "}
+                      <button onClick={() => eliminarEmpresa(emp)} className="sac-btn !py-0.5 !px-3 text-xs text-rust">
+                        Eliminar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-[11px] text-inkSoft mt-1.5">Doble clic sobre una empresa para abrirla.</p>
           </div>
 
-          <div>
-            <label className="block text-xs font-medium text-inkSoft mb-2">
-              Tipo de empresa
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setTipo("servicio")}
-                className={`border rounded-sm px-4 py-3 text-left text-sm transition-colors ${
-                  tipo === "servicio"
-                    ? "border-ledger bg-ledger/10"
-                    : "border-paperLine"
-                }`}
-              >
-                <span className="block font-medium">Servicio</span>
-                <span className="block text-xs text-inkSoft mt-1">
-                  Sin inventario. Ej. consultoría, taller, clínica.
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setTipo("comercial")}
-                className={`border rounded-sm px-4 py-3 text-left text-sm transition-colors ${
-                  tipo === "comercial"
-                    ? "border-accent bg-accent/10"
-                    : "border-paperLine"
-                }`}
-              >
-                <span className="block font-medium">Comercial</span>
-                <span className="block text-xs text-inkSoft mt-1">
-                  Compra-venta de mercadería, con inventario e IVA.
-                </span>
-              </button>
-            </div>
+          <div className="px-3 py-1 text-[11px] text-inkSoft border-t border-[#a9a496] bg-[#E2DFD6]">
+            {empresas.length} {empresas.length === 1 ? "empresa" : "empresas"}
           </div>
+        </div>
 
-          {error && <p className="text-sm text-rust">{error}</p>}
-
-          <button
-            type="submit"
-            disabled={creando}
-            className="bg-brand text-onBrand px-4 py-2 rounded-sm text-sm font-medium hover:bg-brandDark transition-colors disabled:opacity-60"
+        {/* Nueva empresa */}
+        <form onSubmit={crearEmpresa} className="sac-ventana p-0">
+          <div
+            className="px-3 py-1.5 text-xs font-semibold"
+            style={{ background: "linear-gradient(to bottom, rgb(var(--brand-dark)), rgb(var(--brand)))", color: "rgb(var(--on-brand))" }}
           >
-            {creando ? "Creando…" : "Crear empresa y empezar"}
-          </button>
+            Nueva empresa de práctica
+          </div>
+          <div className="p-4 space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-inkSoft mb-1">Nombre de la empresa</label>
+              <input
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                placeholder="Ej. Comercial El Roble, S.A."
+                className="w-full px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
+
+            <fieldset className="sac-grupo">
+              <legend>Tipo de empresa</legend>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {[
+                  { v: "servicio", t: "Servicio", d: "Sin inventario. Ej. consultoría, taller, clínica." },
+                  { v: "comercial", t: "Comercial", d: "Compra-venta de mercadería, con inventario e IVA." },
+                ].map((o) => (
+                  <label key={o.v} className={`flex gap-2 items-start p-2 cursor-pointer border ${tipo === o.v ? "border-accent bg-accent/10" : "border-transparent"}`}>
+                    <input type="radio" name="tipo" checked={tipo === o.v} onChange={() => setTipo(o.v)} className="mt-1" />
+                    <span>
+                      <span className="block text-sm font-medium">{o.t}</span>
+                      <span className="block text-xs text-inkSoft">{o.d}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+
+            {error && <p className="text-sm text-rust">{error}</p>}
+
+            <button type="submit" disabled={creando} className="sac-btn sac-btn-primario font-medium">
+              {creando ? "Creando…" : "Crear empresa y empezar"}
+            </button>
+          </div>
         </form>
-      </section>
+      </div>
     </main>
   );
 }

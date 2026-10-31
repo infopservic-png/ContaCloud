@@ -36,6 +36,55 @@ table {
   border-collapse: collapse;
 }
 
+/* ===== Estilo clásico tipo SAC (login, recuperar, empresas) ===== */
+.sac-escritorio {
+  background: linear-gradient(to bottom, #DDE3EA, #B7C1CE);
+}
+.sac-ventana {
+  background: #ECE9E1;
+  border: 1px solid #5d6673;
+  border-radius: 0;
+  box-shadow: 3px 3px 0 rgba(31, 42, 60, 0.28);
+}
+.sac-ventana[data-titulo]::before {
+  content: attr(data-titulo);
+  display: block;
+  margin: -1.5rem -1.5rem 1.25rem;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: linear-gradient(to bottom, rgb(var(--brand-dark)), rgb(var(--brand)));
+  color: rgb(var(--on-brand));
+}
+.sac-ventana input:not([type="checkbox"]):not([type="radio"]) {
+  background: #fff;
+  border: 1px solid #7a828f;
+  border-radius: 0;
+  box-shadow: inset 1px 1px 0 #d4d4d4;
+}
+.sac-btn {
+  background: linear-gradient(to bottom, #fbfbfa, #dcd9d0);
+  border: 1px solid #6b7280;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 #fff;
+  color: #1F2A3C;
+  font-size: 13px;
+  padding: 4px 14px;
+}
+.sac-btn:hover { background: linear-gradient(to bottom, #fff, #e8e5dc); }
+.sac-btn:active { box-shadow: inset 1px 1px 2px rgba(0,0,0,.3); }
+.sac-btn:disabled { opacity: .6; }
+.sac-btn-primario {
+  background: linear-gradient(to bottom, rgb(var(--brand-dark)), rgb(var(--brand)));
+  color: rgb(var(--on-brand));
+  border-color: rgb(var(--brand));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.25);
+}
+.sac-btn-primario:hover { background: rgb(var(--brand-dark)); }
+.sac-grupo { border: 1px solid #a9a496; padding: 12px 14px 14px; }
+.sac-grupo > legend { font-size: 12px; padding: 0 6px; color: #4B5768; font-weight: 600; }
+
 @media print {
   /* Lo impreso (reportes) siempre usa la paleta original, no los colores de marca */
   :root {
