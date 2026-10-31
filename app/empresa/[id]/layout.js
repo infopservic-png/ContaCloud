@@ -7,22 +7,43 @@ import { supabase } from "@/lib/supabaseClient";
 import { EmpresaContext } from "@/lib/EmpresaContext";
 import Marca from "@/components/Marca";
 
-const TABS = [
-  { href: "cuentas", label: "Cuentas" },
-  { href: "transacciones", label: "Diario" },
-  { href: "mayor", label: "Mayor" },
-  { href: "ventas", label: "Ventas" },
-  { href: "compras", label: "Compras" },
-  { href: "facturacion", label: "Facturación DTE" },
-  { href: "libros", label: "Libros de IVA" },
-  { href: "importar", label: "Importar DTE" },
-  { href: "kardex", label: "Kardex" },
-  { href: "cxc", label: "Cuentas por Cobrar" },
-  { href: "cxp", label: "Cuentas por Pagar" },
-  { href: "bancos", label: "Bancos" },
-  { href: "balance", label: "Balance de Comprobación" },
-  { href: "resultados", label: "Estado de Resultados" },
-  { href: "balance-general", label: "Balance General" },
+// Menú agrupado (como las secciones del SAC).
+const GRUPOS = [
+  {
+    id: "contabilidad",
+    label: "Contabilidad",
+    items: [
+      { href: "cuentas", label: "Cuentas" },
+      { href: "transacciones", label: "Libro diario" },
+      { href: "mayor", label: "Mayor" },
+      { href: "balance", label: "Balance de comprobación" },
+      { href: "resultados", label: "Estado de resultados" },
+      { href: "balance-general", label: "Balance general" },
+      { href: "bancos", label: "Bancos" },
+      { href: "kardex", label: "Kardex" },
+    ],
+  },
+  {
+    id: "impuestos",
+    label: "Impuestos",
+    items: [
+      { href: "compras", label: "Compras" },
+      { href: "ventas", label: "Ventas" },
+      { href: "facturacion", label: "Facturación DTE" },
+      { href: "libros", label: "Libros de IVA" },
+      { href: "importar", label: "Importar DTE" },
+    ],
+  },
+  {
+    id: "socios",
+    label: "Socios de negocios",
+    items: [
+      { href: "clientes", label: "Clientes" },
+      { href: "cxc", label: "Cuentas por cobrar" },
+      { href: "proveedores", label: "Proveedores" },
+      { href: "cxp", label: "Cuentas por pagar" },
+    ],
+  },
 ];
 
 export default function EmpresaLayout({ children }) {
@@ -36,6 +57,10 @@ export default function EmpresaLayout({ children }) {
   const [cargando, setCargando] = useState(true);
   const [errorCarga, setErrorCarga] = useState(null);
   const [usuarioId, setUsuarioId] = useState(null);
+  const [grupoElegido, setGrupoElegido] = useState(null);
+  // El grupo activo sigue a la página abierta; al pulsar un grupo se muestra ese.
+  const grupoDePagina = GRUPOS.find((g) => g.items.some((i) => pathname?.endsWith(`/${i.href}`)));
+  const grupoActivo = GRUPOS.find((g) => g.id === grupoElegido) || grupoDePagina || GRUPOS[0];
 
   const recargarCuentas = useCallback(async () => {
     const { data, error } = await supabase
@@ -60,6 +85,10 @@ export default function EmpresaLayout({ children }) {
     },
     [empresaId]
   );
+
+  useEffect(() => {
+    setGrupoElegido(null);
+  }, [pathname]);
 
   useEffect(() => {
     let activo = true;
@@ -160,23 +189,40 @@ export default function EmpresaLayout({ children }) {
           </div>
         </header>
 
-        <nav className="flex flex-wrap gap-1 border-b border-paperLine mb-8 no-print">
-          {TABS.map((tab) => {
-            const activa = pathname?.endsWith(`/${tab.href}`);
-            return (
-              <Link
-                key={tab.href}
-                href={`/empresa/${empresaId}/${tab.href}`}
-                className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                  activa
-                    ? "border-accent text-ink"
-                    : "border-transparent text-inkSoft hover:text-ink"
-                }`}
-              >
-                {tab.label}
-              </Link>
-            );
-          })}
+        <nav className="mb-8 no-print border border-[#5d6673] bg-[#ECE9E1] shadow-[2px_2px_0_rgba(31,42,60,0.22)]">
+          {/* Menú principal */}
+          <div className="flex flex-wrap bg-[#DAD7CD] border-b border-[#a9a496]">
+            {GRUPOS.map((g) => {
+              const activo = g.id === grupoActivo.id;
+              return (
+                <button
+                  key={g.id}
+                  type="button"
+                  onClick={() => setGrupoElegido(g.id)}
+                  className={`px-5 py-2 text-sm font-semibold border-r border-[#a9a496] transition-colors ${
+                    activo ? "bg-brand text-onBrand" : "text-ink hover:bg-[#E8E5DB]"
+                  }`}
+                >
+                  {g.label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Opciones del grupo */}
+          <div className="flex flex-wrap gap-1.5 p-2">
+            {grupoActivo.items.map((tab) => {
+              const activa = pathname?.endsWith(`/${tab.href}`);
+              return (
+                <Link
+                  key={tab.href}
+                  href={`/empresa/${empresaId}/${tab.href}`}
+                  className={`sac-btn !py-1 ${activa ? "sac-btn-primario font-medium" : ""}`}
+                >
+                  {tab.label}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
 
         {errorCarga && (

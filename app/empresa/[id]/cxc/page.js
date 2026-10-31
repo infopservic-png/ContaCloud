@@ -3,5 +3,5 @@
 import PanelCobrosPagos from "@/lib/PanelCobrosPagos";
 
 export default function CuentasPorCobrarPage() {
-  return <PanelCobrosPagos tipo="cobrar" />;
+  return <PanelCobrosPagos tipo="cobrar" vista="cuentas" />;
 }
