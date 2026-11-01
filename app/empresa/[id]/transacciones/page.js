@@ -6,6 +6,7 @@ import { useEmpresa } from "@/lib/EmpresaContext";
 import { obtenerPartidas, formatoMoneda } from "@/lib/contabilidad";
 import CuentaCombobox from "@/lib/CuentaCombobox";
 import { exportarAExcel } from "@/lib/exportarExcel";
+import PartidaContable from "@/components/PartidaContable";
 import { TIPOS_PARTIDA, etiquetaPartida, compararPartidas, siguienteNumeroPartida, tipoPartida } from "@/lib/partidas";
 
 function lineaVacia() {
@@ -24,7 +25,8 @@ function formularioVacio() {
 }
 
 export default function TransaccionesPage() {
-  const { cuentas, empresaId } = useEmpresa();
+  const { cuentas, empresaId, empresa } = useEmpresa();
+  const [vista, setVista] = useState("partida"); // "partida" (reporte) | "tabla"
 
   const [form, setForm] = useState(formularioVacio());
   const [editandoId, setEditandoId] = useState(null);
@@ -515,6 +517,17 @@ export default function TransaccionesPage() {
             Exportar a Excel
           </button>
           <label className="flex items-center gap-1.5 text-inkSoft">
+            Vista
+            <select
+              value={vista}
+              onChange={(e) => setVista(e.target.value)}
+              className="border border-paperLine rounded-sm px-2 py-1 bg-white text-ink"
+            >
+              <option value="partida">Partida contable</option>
+              <option value="tabla">Tabla</option>
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5 text-inkSoft">
             Tipo
             <select
               value={filtroTipo}
@@ -557,6 +570,21 @@ export default function TransaccionesPage() {
           {partidasOrdenadas.map((p) => {
             const subDebe = p.movimientos.reduce((a, m) => a + Number(m.debe), 0);
             const subHaber = p.movimientos.reduce((a, m) => a + Number(m.haber), 0);
+            if (vista === "partida") {
+              return (
+                <PartidaContable
+                  key={p.id}
+                  partida={p}
+                  empresa={empresa}
+                  acciones={
+                    <>
+                      <button onClick={() => empezarEdicion(p)} className="text-accentDark font-medium hover:underline">Editar</button>
+                      <button onClick={() => eliminarPartida(p.id)} className="text-rust hover:underline">Eliminar</button>
+                    </>
+                  }
+                />
+              );
+            }
             return (
               <div
                 key={p.id}
