@@ -13,7 +13,36 @@ import { formatoMoneda } from "@/lib/contabilidad";
 import CuentaCombobox from "@/lib/CuentaCombobox";
 
 function nuevaCuentaVacia() {
-  return { nombre: "", numero_cuenta: "", cuenta_contable_id: "" };
+  return {
+    nombre: "",
+    numero_cuenta: "",
+    cuenta_contable_id: "",
+    formato_cheque: 1,
+    imprimir_cheque_separado: true,
+    firmante_hace_nombre: "",
+    firmante_hace_cargo: "",
+    firmante_revisa_nombre: "",
+    firmante_revisa_cargo: "",
+    firmante_autoriza_nombre: "",
+    firmante_autoriza_cargo: "",
+    concilia_elabora: "",
+    concilia_revisa: "",
+    concilia_autoriza: "",
+  };
+}
+
+// Trae a los campos del formulario los valores de una cuenta bancaria ya
+// existente (para "Editar"), sustituyendo los null/undefined por "".
+function cuentaAFormulario(cb) {
+  const base = nuevaCuentaVacia();
+  const out = { ...base };
+  for (const key of Object.keys(base)) {
+    if (cb[key] !== undefined && cb[key] !== null) out[key] = cb[key];
+  }
+  out.nombre = cb.nombre || "";
+  out.numero_cuenta = cb.numero_cuenta || "";
+  out.cuenta_contable_id = cb.cuenta_contable_id || "";
+  return out;
 }
 
 function nuevoMovBancoVacio() {
@@ -35,6 +64,9 @@ export default function BancosPage() {
   const [nuevaCuenta, setNuevaCuenta] = useState(nuevaCuentaVacia());
   const [errorCuenta, setErrorCuenta] = useState(null);
   const [guardandoCuenta, setGuardandoCuenta] = useState(false);
+  // Cuando no es null, el formulario está editando esa cuenta en vez de
+  // crear una nueva.
+  const [editandoId, setEditandoId] = useState(null);
 
   const [formMov, setFormMov] = useState(nuevoMovBancoVacio());
   const [errorMov, setErrorMov] = useState(null);
@@ -71,6 +103,28 @@ export default function BancosPage() {
     cargarMovimientos(cb);
   }
 
+  function empezarCrear() {
+    const estabaEditando = !!editandoId;
+    setEditandoId(null);
+    setNuevaCuenta(nuevaCuentaVacia());
+    setErrorCuenta(null);
+    setMostrarFormCuenta((v) => (estabaEditando ? true : !v));
+  }
+
+  function empezarEdicion(cb) {
+    setEditandoId(cb.id);
+    setNuevaCuenta(cuentaAFormulario(cb));
+    setErrorCuenta(null);
+    setMostrarFormCuenta(true);
+  }
+
+  function cancelarFormCuenta() {
+    setMostrarFormCuenta(false);
+    setEditandoId(null);
+    setNuevaCuenta(nuevaCuentaVacia());
+    setErrorCuenta(null);
+  }
+
   async function agregarCuenta(e) {
     e.preventDefault();
     setErrorCuenta(null);
@@ -83,26 +137,48 @@ export default function BancosPage() {
       return;
     }
     setGuardandoCuenta(true);
-    const { data, error } = await supabase
-      .from("cuentas_bancarias")
-      .insert({
-        empresa_id: empresaId,
-        nombre: nuevaCuenta.nombre.trim(),
-        numero_cuenta: nuevaCuenta.numero_cuenta.trim() || null,
-        cuenta_contable_id: nuevaCuenta.cuenta_contable_id,
-      })
-      .select()
-      .single();
+    const datos = {
+      nombre: nuevaCuenta.nombre.trim(),
+      numero_cuenta: nuevaCuenta.numero_cuenta.trim() || null,
+      cuenta_contable_id: nuevaCuenta.cuenta_contable_id,
+      formato_cheque: Number(nuevaCuenta.formato_cheque) || 1,
+      imprimir_cheque_separado: !!nuevaCuenta.imprimir_cheque_separado,
+      firmante_hace_nombre: nuevaCuenta.firmante_hace_nombre.trim() || null,
+      firmante_hace_cargo: nuevaCuenta.firmante_hace_cargo.trim() || null,
+      firmante_revisa_nombre: nuevaCuenta.firmante_revisa_nombre.trim() || null,
+      firmante_revisa_cargo: nuevaCuenta.firmante_revisa_cargo.trim() || null,
+      firmante_autoriza_nombre: nuevaCuenta.firmante_autoriza_nombre.trim() || null,
+      firmante_autoriza_cargo: nuevaCuenta.firmante_autoriza_cargo.trim() || null,
+      concilia_elabora: nuevaCuenta.concilia_elabora.trim() || null,
+      concilia_revisa: nuevaCuenta.concilia_revisa.trim() || null,
+      concilia_autoriza: nuevaCuenta.concilia_autoriza.trim() || null,
+    };
+
+    let data, error;
+    if (editandoId) {
+      ({ data, error } = await supabase
+        .from("cuentas_bancarias")
+        .update(datos)
+        .eq("id", editandoId)
+        .select()
+        .single());
+    } else {
+      ({ data, error } = await supabase
+        .from("cuentas_bancarias")
+        .insert({ empresa_id: empresaId, ...datos })
+        .select()
+        .single());
+    }
     setGuardandoCuenta(false);
     if (error) {
-      setErrorCuenta("No se pudo crear: " + error.message);
+      setErrorCuenta("No se pudo guardar: " + error.message);
       return;
     }
-    setNuevaCuenta(nuevaCuentaVacia());
-    setMostrarFormCuenta(false);
+    const idGuardado = data.id;
+    cancelarFormCuenta();
     const lista = await cargarCuentas();
-    const creada = lista.find((c) => c.id === data.id);
-    if (creada) seleccionarCuenta(creada);
+    const guardada = lista.find((c) => c.id === idGuardado);
+    if (guardada) seleccionarCuenta(guardada);
   }
 
   async function agregarMovBanco(e) {
@@ -211,57 +287,166 @@ export default function BancosPage() {
             )}
           </div>
           <button
-            onClick={() => setMostrarFormCuenta((v) => !v)}
+            onClick={empezarCrear}
             className="text-xs text-accentDark hover:underline"
           >
-            {mostrarFormCuenta ? "Cancelar" : "+ Agregar cuenta bancaria"}
+            {mostrarFormCuenta && !editandoId ? "Cancelar" : "+ Agregar cuenta bancaria"}
           </button>
 
           {mostrarFormCuenta && (
             <form
               onSubmit={agregarCuenta}
-              className="mt-3 bg-[#F7F4EA] border border-paperLine rounded-sm p-3 space-y-2"
+              className="mt-3 bg-[#F7F4EA] border border-paperLine rounded-sm p-3 space-y-3"
             >
-              <div>
-                <label className="block text-xs font-medium text-inkSoft mb-1">
-                  Nombre (ej. Banco Agrícola)
-                </label>
-                <input
-                  value={nuevaCuenta.nombre}
-                  onChange={(e) => setNuevaCuenta({ ...nuevaCuenta, nombre: e.target.value })}
-                  className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm"
-                />
+              <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide">
+                {editandoId ? "Editar cuenta bancaria" : "Nueva cuenta bancaria"}
+              </p>
+
+              {/* Datos generales */}
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs font-medium text-inkSoft mb-1">
+                    Nombre (ej. Banco Agrícola)
+                  </label>
+                  <input
+                    value={nuevaCuenta.nombre}
+                    onChange={(e) => setNuevaCuenta({ ...nuevaCuenta, nombre: e.target.value })}
+                    className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-inkSoft mb-1">
+                    N.° de cuenta (opcional)
+                  </label>
+                  <input
+                    value={nuevaCuenta.numero_cuenta}
+                    onChange={(e) =>
+                      setNuevaCuenta({ ...nuevaCuenta, numero_cuenta: e.target.value })
+                    }
+                    className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-inkSoft mb-1">
+                    Cuenta contable (del catálogo)
+                  </label>
+                  <CuentaCombobox
+                    cuentas={cuentas}
+                    value={nuevaCuenta.cuenta_contable_id}
+                    onChange={(id) => setNuevaCuenta({ ...nuevaCuenta, cuenta_contable_id: id })}
+                  />
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-inkSoft mb-1">
-                  N.° de cuenta (opcional)
+
+              {/* Cheques */}
+              <div className="pt-2 border-t border-paperLine space-y-2">
+                <p className="text-xs font-semibold text-inkSoft">Emisión de cheques</p>
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <label className="block text-xs font-medium text-inkSoft mb-1">
+                      N.° de formato del cheque
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={nuevaCuenta.formato_cheque}
+                      onChange={(e) =>
+                        setNuevaCuenta({ ...nuevaCuenta, formato_cheque: e.target.value })
+                      }
+                      className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm font-num"
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center gap-2 text-xs text-inkSoft">
+                  <input
+                    type="checkbox"
+                    checked={nuevaCuenta.imprimir_cheque_separado}
+                    onChange={(e) =>
+                      setNuevaCuenta({
+                        ...nuevaCuenta,
+                        imprimir_cheque_separado: e.target.checked,
+                      })
+                    }
+                  />
+                  Imprimir cheque separado del voucher
                 </label>
-                <input
-                  value={nuevaCuenta.numero_cuenta}
-                  onChange={(e) =>
-                    setNuevaCuenta({ ...nuevaCuenta, numero_cuenta: e.target.value })
-                  }
-                  className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm"
-                />
               </div>
-              <div>
-                <label className="block text-xs font-medium text-inkSoft mb-1">
-                  Cuenta contable (del catálogo)
-                </label>
-                <CuentaCombobox
-                  cuentas={cuentas}
-                  value={nuevaCuenta.cuenta_contable_id}
-                  onChange={(id) => setNuevaCuenta({ ...nuevaCuenta, cuenta_contable_id: id })}
-                />
+
+              {/* Firmantes del cheque */}
+              <div className="pt-2 border-t border-paperLine space-y-2">
+                <p className="text-xs font-semibold text-inkSoft">Firmantes del cheque</p>
+                {[
+                  { k: "firmante_hace", label: "Persona que hace el cheque" },
+                  { k: "firmante_revisa", label: "Persona que revisa el cheque" },
+                  { k: "firmante_autoriza", label: "Persona que autoriza el cheque" },
+                ].map(({ k, label }) => (
+                  <div key={k} className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-inkSoft mb-1">
+                        {label} — Nombre
+                      </label>
+                      <input
+                        value={nuevaCuenta[`${k}_nombre`]}
+                        onChange={(e) =>
+                          setNuevaCuenta({ ...nuevaCuenta, [`${k}_nombre`]: e.target.value })
+                        }
+                        className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs font-medium text-inkSoft mb-1">Cargo</label>
+                      <input
+                        value={nuevaCuenta[`${k}_cargo`]}
+                        onChange={(e) =>
+                          setNuevaCuenta({ ...nuevaCuenta, [`${k}_cargo`]: e.target.value })
+                        }
+                        className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
+
+              {/* Responsables de la conciliación */}
+              <div className="pt-2 border-t border-paperLine space-y-2">
+                <p className="text-xs font-semibold text-inkSoft">
+                  Responsables de la conciliación
+                </p>
+                {[
+                  { k: "concilia_elabora", label: "Elabora" },
+                  { k: "concilia_revisa", label: "Revisa" },
+                  { k: "concilia_autoriza", label: "Autoriza" },
+                ].map(({ k, label }) => (
+                  <div key={k}>
+                    <label className="block text-xs font-medium text-inkSoft mb-1">{label}</label>
+                    <input
+                      value={nuevaCuenta[k]}
+                      onChange={(e) => setNuevaCuenta({ ...nuevaCuenta, [k]: e.target.value })}
+                      className="w-full border border-paperLine rounded-sm px-2 py-1 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+
               {errorCuenta && <p className="text-xs text-rust">{errorCuenta}</p>}
-              <button
-                type="submit"
-                disabled={guardandoCuenta}
-                className="bg-brand text-onBrand px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-brandDark disabled:opacity-60"
-              >
-                {guardandoCuenta ? "Guardando…" : "Guardar cuenta"}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  type="submit"
+                  disabled={guardandoCuenta}
+                  className="bg-brand text-onBrand px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-brandDark disabled:opacity-60"
+                >
+                  {guardandoCuenta ? "Guardando…" : editandoId ? "Guardar cambios" : "Guardar cuenta"}
+                </button>
+                {editandoId && (
+                  <button
+                    type="button"
+                    onClick={cancelarFormCuenta}
+                    className="px-3 py-1.5 rounded-sm text-xs font-medium text-inkSoft hover:underline"
+                  >
+                    Cancelar
+                  </button>
+                )}
+              </div>
             </form>
           )}
         </div>
@@ -276,12 +461,20 @@ export default function BancosPage() {
             <p className="text-inkSoft text-sm">Cargando…</p>
           ) : (
             <>
-              <div className="mb-4">
-                <h3 className="font-display text-base font-semibold">{cuentaBancaria.nombre}</h3>
-                <p className="text-xs text-inkSoft">
-                  {cuentaBancaria.cuenta_contable?.codigo} — {cuentaBancaria.cuenta_contable?.nombre}
-                  {cuentaBancaria.numero_cuenta ? ` · Cuenta N.° ${cuentaBancaria.numero_cuenta}` : ""}
-                </p>
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-display text-base font-semibold">{cuentaBancaria.nombre}</h3>
+                  <p className="text-xs text-inkSoft">
+                    {cuentaBancaria.cuenta_contable?.codigo} — {cuentaBancaria.cuenta_contable?.nombre}
+                    {cuentaBancaria.numero_cuenta ? ` · Cuenta N.° ${cuentaBancaria.numero_cuenta}` : ""}
+                  </p>
+                </div>
+                <button
+                  onClick={() => empezarEdicion(cuentaBancaria)}
+                  className="text-xs text-accentDark hover:underline whitespace-nowrap no-print"
+                >
+                  Editar firmantes y datos
+                </button>
               </div>
 
               {/* Agregar movimiento del estado de cuenta del banco */}
