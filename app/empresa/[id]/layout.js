@@ -7,6 +7,45 @@ import { supabase } from "@/lib/supabaseClient";
 import { EmpresaContext } from "@/lib/EmpresaContext";
 import Marca from "@/components/Marca";
 
+// Íconos de línea simples (24x24, stroke="currentColor") para los grupos
+// principales del menú. Un solo componente genérico leyendo un "path" por id
+// evita repetir el <svg> completo en cada botón.
+const ICONO_PATHS = {
+  // Libro abierto (Contabilidad)
+  contabilidad:
+    "M3 5.5c2.2-1 4.8-1 7 0v13c-2.2-1-4.8-1-7 0v-13zM21 5.5c-2.2-1-4.8-1-7 0v13c2.2-1 4.8-1 7 0v-13z",
+  // Recibo con porcentaje (Impuestos)
+  impuestos:
+    "M6 3h12v18l-2.5-1.5L13 21l-2.5-1.5L8 21l-2-1.5V3zM9 8h1.5M13.5 16H15M9 16l6-8",
+  // Edificio de banco con columnas (Bancos)
+  bancos:
+    "M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 21h18M4 10h16",
+  // Dos personas (Socios de negocios)
+  socios:
+    "M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3 2.7-5 6-5s6 2 6 5M17.5 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM15 20c.3-2.3 2.3-4 4.5-4s4.2 1.7 4.5 4",
+};
+
+function IconoGrupo({ id }) {
+  const d = ICONO_PATHS[id];
+  if (!d) return null;
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="16"
+      height="16"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="inline-block align-[-2px] mr-1.5"
+      aria-hidden="true"
+    >
+      <path d={d} />
+    </svg>
+  );
+}
+
 // Menú agrupado (como las secciones del SAC).
 const GRUPOS = [
   {
@@ -20,7 +59,6 @@ const GRUPOS = [
       { href: "balance", label: "Balance de comprobación" },
       { href: "resultados", label: "Estado de resultados" },
       { href: "balance-general", label: "Balance general" },
-      { href: "bancos", label: "Bancos" },
       { href: "kardex", label: "Kardex" },
     ],
   },
@@ -33,6 +71,14 @@ const GRUPOS = [
       { href: "facturacion", label: "Facturación DTE" },
       { href: "libros", label: "Libros de IVA" },
       { href: "importar", label: "Importar DTE" },
+    ],
+  },
+  {
+    id: "bancos",
+    label: "Bancos",
+    items: [
+      { href: "bancos", label: "Bancos" },
+      { href: "transacciones-bancarias", label: "Transacciones" },
     ],
   },
   {
@@ -204,6 +250,7 @@ export default function EmpresaLayout({ children }) {
                     activo ? "bg-brand text-onBrand" : "text-ink hover:bg-[#E8E5DB]"
                   }`}
                 >
+                  <IconoGrupo id={g.id} />
                   {g.label}
                 </button>
               );
