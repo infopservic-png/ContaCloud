@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [cargando, setCargando] = useState(true);
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState("servicio");
+  const [modoContable, setModoContable] = useState("documento");
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState(null);
   const [admin, setAdmin] = useState(false);
@@ -58,6 +59,7 @@ export default function Dashboard() {
       .insert({
         nombre: nombre.trim(),
         tipo,
+        modo_contable: modoContable,
         user_id: userId,
         propietario_email: sesion.session.user.email,
       })
@@ -235,6 +237,25 @@ export default function Dashboard() {
                   </label>
                 ))}
               </div>
+            </fieldset>
+
+            <fieldset className="sac-grupo">
+              <legend>Contabilización de ventas y compras</legend>
+              <div className="grid sm:grid-cols-2 gap-3">
+                {[
+                  { v: "documento", t: "Una partida por cada documento", d: "Cada venta o compra genera su partida en el Diario." },
+                  { v: "diferida", t: "Contabilizar después", d: "Se cargan sin partida y luego se contabilizan por día (Ingresos / Egresos), como en el SAC." },
+                ].map((o) => (
+                  <label key={o.v} className={`flex gap-2 items-start p-2 cursor-pointer border ${modoContable === o.v ? "border-accent bg-accent/10" : "border-transparent"}`}>
+                    <input type="radio" name="modo" checked={modoContable === o.v} onChange={() => setModoContable(o.v)} className="mt-1" />
+                    <span>
+                      <span className="block text-sm font-medium">{o.t}</span>
+                      <span className="block text-xs text-inkSoft">{o.d}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-[11px] text-inkSoft mt-2">Se puede cambiar después en Contabilidad → Contabilizar.</p>
             </fieldset>
 
             {error && <p className="text-sm text-rust">{error}</p>}

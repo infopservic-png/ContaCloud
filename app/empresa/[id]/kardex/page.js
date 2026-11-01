@@ -1,5 +1,6 @@
 "use client";
 
+import { siguienteNumeroPartida } from "@/lib/partidas";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useEmpresa } from "@/lib/EmpresaContext";
@@ -158,14 +159,7 @@ export default function KardexPage() {
     }
     const nuevo = resultado.find((r) => r.id === "NUEVO");
 
-    const { data: ultimaPartida } = await supabase
-      .from("transacciones")
-      .select("numero_partida")
-      .eq("empresa_id", empresaId)
-      .order("numero_partida", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    const siguienteNumero = (ultimaPartida?.numero_partida || 0) + 1;
+    const siguienteNumero = await siguienteNumeroPartida(empresaId, "diario");
 
     const { data: transaccion, error: errTx } = await supabase
       .from("transacciones")
@@ -174,6 +168,7 @@ export default function KardexPage() {
         fecha: candidato.fecha,
         descripcion: glosaMovimiento(candidato.tipo, candidato.descripcion),
         numero_partida: siguienteNumero,
+        tipo: "diario",
       })
       .select()
       .single();

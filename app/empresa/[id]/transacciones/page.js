@@ -6,6 +6,7 @@ import { useEmpresa } from "@/lib/EmpresaContext";
 import { obtenerPartidas, formatoMoneda } from "@/lib/contabilidad";
 import CuentaCombobox from "@/lib/CuentaCombobox";
 import { exportarAExcel } from "@/lib/exportarExcel";
+import { TIPOS_PARTIDA, etiquetaPartida, compararPartidas, siguienteNumeroPartida, tipoPartida } from "@/lib/partidas";
 
 function lineaVacia() {
   return { cuenta_id: "", debe: "", haber: "" };
@@ -14,6 +15,7 @@ function lineaVacia() {
 function formularioVacio() {
   return {
     fecha: new Date().toISOString().slice(0, 10),
+    tipo: "diario",
     descripcion: "",
     elaborado_por: "",
     revisado_por: "",
@@ -33,36 +35,39 @@ export default function TransaccionesPage() {
   const [cargandoPartidas, setCargandoPartidas] = useState(true);
   const [orden, setOrden] = useState("numero"); // "numero" | "fecha"
   const [renumerando, setRenumerando] = useState(false);
+  const [filtroTipo, setFiltroTipo] = useState("todos");
 
   const partidasOrdenadas = useMemo(() => {
-    const copia = [...partidas];
+    const copia = partidas.filter((p) => filtroTipo === "todos" || (p.tipo || "diario") === filtroTipo);
     if (orden === "fecha") {
-      copia.sort(
-        (a, b) =>
-          String(a.fecha).localeCompare(String(b.fecha)) || a.numero_partida - b.numero_partida
-      );
+      copia.sort(compararPartidas);
     } else {
-      copia.sort((a, b) => a.numero_partida - b.numero_partida);
+      const ordenTipo = (x) => TIPOS_PARTIDA.findIndex((t) => t.id === (x.tipo || "diario"));
+      copia.sort((a, b) => ordenTipo(a) - ordenTipo(b) || a.numero_partida - b.numero_partida);
     }
     return copia;
-  }, [partidas, orden]);
+  }, [partidas, orden, filtroTipo]);
 
-  // Renumera 1..N siguiendo el orden cronológico (fecha y, a igual fecha, el número actual).
+  // Renumera 1..N dentro de cada tipo, siguiendo el orden cronológico (fecha y, a igual fecha, el número actual).
   async function renumerarPorFecha() {
-    const cronologicas = [...partidas].sort(
-      (a, b) =>
-        String(a.fecha).localeCompare(String(b.fecha)) || a.numero_partida - b.numero_partida
-    );
-    const cambios = cronologicas
-      .map((p, i) => ({ id: p.id, de: p.numero_partida, a: i + 1 }))
-      .filter((c) => c.de !== c.a);
+    const cambios = [];
+    let total = 0;
+    for (const t of TIPOS_PARTIDA) {
+      const delTipo = partidas
+        .filter((p) => (p.tipo || "diario") === t.id)
+        .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || a.numero_partida - b.numero_partida);
+      total += delTipo.length;
+      delTipo.forEach((p, i) => {
+        if (p.numero_partida !== i + 1) cambios.push({ id: p.id, de: p.numero_partida, a: i + 1 });
+      });
+    }
     if (cambios.length === 0) {
       alert("Las partidas ya están numeradas en orden de fecha.");
       return;
     }
     if (
       !confirm(
-        `Se renumerarán ${cambios.length} partida(s) según su fecha (1 a ${cronologicas.length}). ` +
+        `Se renumerarán ${cambios.length} de ${total} partida(s) según su fecha, dentro de cada tipo. ` +
           "Los números cambiarán en el Diario, el Mayor y los reportes. ¿Continuar?"
       )
     )
@@ -115,7 +120,7 @@ export default function TransaccionesPage() {
     for (const p of partidas) {
       p.movimientos.forEach((m, i) => {
         filas.push([
-          i === 0 ? p.numero_partida : "",
+          i === 0 ? etiquetaPartida(p.tipo, p.numero_partida) : "",
           i === 0 ? p.fecha : "",
           `${m.cuentas.codigo} — ${m.cuentas.nombre}`,
           m.debe > 0 ? m.debe : "",
@@ -156,6 +161,7 @@ export default function TransaccionesPage() {
     setEditandoId(p.id);
     setForm({
       fecha: p.fecha,
+      tipo: p.tipo || "diario",
       descripcion: p.descripcion,
       elaborado_por: p.elaborado_por || "",
       revisado_por: p.revisado_por || "",
@@ -260,8 +266,7 @@ export default function TransaccionesPage() {
     }
 
     // Modo creación
-    const siguienteNumero =
-      partidas.length > 0 ? Math.max(...partidas.map((p) => p.numero_partida)) + 1 : 1;
+    const siguienteNumero = await siguienteNumeroPartida(empresaId, form.tipo || "diario");
 
     const { data: transaccion, error: errTx } = await supabase
       .from("transacciones")
@@ -270,6 +275,7 @@ export default function TransaccionesPage() {
         fecha: form.fecha,
         descripcion: form.descripcion.trim(),
         numero_partida: siguienteNumero,
+        tipo: form.tipo || "diario",
         elaborado_por: form.elaborado_por.trim() || null,
         revisado_por: form.revisado_por.trim() || null,
       })
@@ -319,6 +325,20 @@ export default function TransaccionesPage() {
                 onChange={(e) => actualizarCampo("fecha", e.target.value)}
                 className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm"
               />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-inkSoft mb-1">Tipo de partida</label>
+              <select
+                value={form.tipo}
+                onChange={(e) => actualizarCampo("tipo", e.target.value)}
+                disabled={!!editandoId}
+                title={editandoId ? "El tipo no se cambia al editar (la numeración es por tipo)" : ""}
+                className="w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm bg-white disabled:opacity-70"
+              >
+                {TIPOS_PARTIDA.map((t) => (
+                  <option key={t.id} value={t.id}>{t.label}</option>
+                ))}
+              </select>
             </div>
             <div className="sm:col-span-2">
               <label className="block text-xs font-medium text-inkSoft mb-1">
@@ -495,6 +515,19 @@ export default function TransaccionesPage() {
             Exportar a Excel
           </button>
           <label className="flex items-center gap-1.5 text-inkSoft">
+            Tipo
+            <select
+              value={filtroTipo}
+              onChange={(e) => setFiltroTipo(e.target.value)}
+              className="border border-paperLine rounded-sm px-2 py-1 bg-white text-ink"
+            >
+              <option value="todos">Todos</option>
+              {TIPOS_PARTIDA.map((t) => (
+                <option key={t.id} value={t.id}>{t.label}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-1.5 text-inkSoft">
             Ordenar por
             <select
               value={orden}
@@ -531,7 +564,7 @@ export default function TransaccionesPage() {
               >
                 <div className="flex items-center justify-between px-4 py-2 bg-paperLine/30 text-xs">
                   <span className="font-medium">
-                    Partida N.° {p.numero_partida} — {p.fecha}
+                    {tipoPartida(p.tipo).id === "diario" ? "Partida" : tipoPartida(p.tipo).label} N.° {etiquetaPartida(p.tipo, p.numero_partida)} — {p.fecha}
                   </span>
                   <span className="text-inkSoft italic">{p.descripcion}</span>
                   <span className="flex items-center gap-3 no-print">

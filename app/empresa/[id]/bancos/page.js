@@ -1,5 +1,6 @@
 "use client";
 
+import { etiquetaPartida } from "@/lib/partidas";
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useEmpresa } from "@/lib/EmpresaContext";
@@ -388,7 +389,7 @@ export default function BancosPage() {
                             />
                           </td>
                           <td className="px-2 py-1.5 font-num">
-                            N.° {m.transacciones?.numero_partida}
+                            N.° {etiquetaPartida(m.transacciones?.tipo, m.transacciones?.numero_partida)}
                           </td>
                           <td className="px-2 py-1.5">{m.transacciones?.fecha}</td>
                           <td className="px-2 py-1.5 font-num text-right tabular">

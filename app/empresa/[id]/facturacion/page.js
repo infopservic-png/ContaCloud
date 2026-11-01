@@ -170,7 +170,7 @@ export default function FacturacionPage() {
       return;
     }
     setExito(
-      `Documento ${res.numeroControl} emitido (partida N° ${res.numeroPartida}).` +
+      `Documento ${res.numeroControl} emitido ${res.numeroPartida ? `(partida N° ${res.numeroPartida})` : "(pendiente de contabilizar)"}.` +
         (res.clienteNuevo ? ` Se registró el cliente ${res.clienteNuevo.nombre}.` : "")
     );
     setReceptor(receptorVacio());

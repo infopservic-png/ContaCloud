@@ -1,5 +1,6 @@
 "use client";
 
+import { compararPartidas, etiquetaPartida } from "@/lib/partidas";
 import { useEffect, useState } from "react";
 import { useEmpresa } from "@/lib/EmpresaContext";
 import { obtenerCuentasConMovimientos, formatoMoneda } from "@/lib/contabilidad";
@@ -74,18 +75,14 @@ export default function MayorPage() {
           movimientos: c.movimientos.map((m) => ({ ...m, cuentaOrigen: c })),
         }));
     for (const grupo of grupos) {
-      const movs = [...grupo.movimientos].sort(
-        (a, b) =>
-          String(a.transacciones?.fecha ?? "").localeCompare(String(b.transacciones?.fecha ?? "")) ||
-          (a.transacciones?.numero_partida ?? 0) - (b.transacciones?.numero_partida ?? 0)
-      );
+      const movs = [...grupo.movimientos].sort((a, b) => compararPartidas(a.transacciones, b.transacciones));
       let saldo = 0;
       filas.push([`${grupo.codigo4} — ${grupo.nombre}`]);
       for (const m of movs) {
         saldo += Number(m.debe) - Number(m.haber);
         filas.push([
           "",
-          m.transacciones?.numero_partida,
+          etiquetaPartida(m.transacciones?.tipo, m.transacciones?.numero_partida),
           m.transacciones?.fecha,
           "Movimientos del día",
           m.debe > 0 ? m.debe : "",
@@ -156,13 +153,7 @@ export default function MayorPage() {
       ) : (
         <div className="space-y-6">
           {tarjetas.map((grupo) => {
-            const movs = [...grupo.movimientos].sort((a, b) => {
-              const porFecha = String(a.transacciones?.fecha ?? "").localeCompare(
-                String(b.transacciones?.fecha ?? "")
-              );
-              if (porFecha !== 0) return porFecha;
-              return (a.transacciones?.numero_partida ?? 0) - (b.transacciones?.numero_partida ?? 0);
-            });
+            const movs = [...grupo.movimientos].sort((a, b) => compararPartidas(a.transacciones, b.transacciones));
 
             let saldo = 0;
             const filas = movs.map((m) => {
@@ -205,7 +196,7 @@ export default function MayorPage() {
                     {filas.map((m) => (
                       <tr key={m.id} className="border-t border-paperLine">
                         <td className="px-3 py-1.5 font-num">
-                          N.° {m.transacciones?.numero_partida}
+                          N.° {etiquetaPartida(m.transacciones?.tipo, m.transacciones?.numero_partida)}
                         </td>
                         <td className="px-3 py-1.5">{m.transacciones?.fecha}</td>
                         <td className="px-3 py-1.5 text-inkSoft">
