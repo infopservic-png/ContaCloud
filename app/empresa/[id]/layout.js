@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { EmpresaContext } from "@/lib/EmpresaContext";
 import Marca from "@/components/Marca";
 
-// Menú agrupado.
+// Menú agrupado (como las secciones del SAC).
 const GRUPOS = [
   {
     id: "contabilidad",
@@ -20,6 +20,7 @@ const GRUPOS = [
       { href: "balance", label: "Balance de comprobación" },
       { href: "resultados", label: "Estado de resultados" },
       { href: "balance-general", label: "Balance general" },
+      { href: "bancos", label: "Bancos" },
       { href: "kardex", label: "Kardex" },
     ],
   },
@@ -32,17 +33,6 @@ const GRUPOS = [
       { href: "facturacion", label: "Facturación DTE" },
       { href: "libros", label: "Libros de IVA" },
       { href: "importar", label: "Importar DTE" },
-    ],
-  },
-  {
-    id: "bancos",
-    label: "Bancos",
-    items: [
-      { href: "bancos", label: "Cuentas bancarias" },
-      { href: "cheques", label: "Cheques" },
-      { href: "transacciones-bancarias", label: "Transacciones bancarias" },
-      { href: "libro-bancos", label: "Libro de bancos" },
-      { href: "conciliacion", label: "Conciliación bancaria" },
     ],
   },
   {
@@ -227,7 +217,7 @@ export default function EmpresaLayout({ children }) {
                 <Link
                   key={tab.href}
                   href={`/empresa/${empresaId}/${tab.href}`}
-                  className={`cc-btn !py-1 ${activa ? "cc-btn-primario font-medium" : ""}`}
+                  className={`sac-btn !py-1 ${activa ? "sac-btn-primario font-medium" : ""}`}
                 >
                   {tab.label}
                 </Link>
