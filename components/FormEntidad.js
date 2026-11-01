@@ -4,6 +4,8 @@ import { useState } from "react";
 import SelectorActividad from "@/components/SelectorActividad";
 import SelectorUbicacion from "@/components/SelectorUbicacion";
 import { formatoMoneda } from "@/lib/contabilidad";
+import CuentaCombobox from "@/lib/CuentaCombobox";
+import { useEmpresa } from "@/lib/EmpresaContext";
 
 // Listas de la ficha de cliente (misma numeración que el sistema contable de referencia)
 const OPERACION_CLIENTE = [
@@ -46,6 +48,7 @@ function Campo({ etiqueta, requerido, className = "", children }) {
 export default function FormEntidad({ tipo = "cliente", v, set, error, guardando, editando, saldo = 0, onSubmit, onCancel }) {
   const prov = tipo === "proveedor";
   const nombreTipo = prov ? "proveedor" : "cliente";
+  const { cuentas } = useEmpresa();
   const [pestana, setPestana] = useState("generales");
   const juridica = v.tipo_persona === "juridica";
   const campo = (nombre) => ({
@@ -74,10 +77,30 @@ export default function FormEntidad({ tipo = "cliente", v, set, error, guardando
       <div className="flex gap-1">
         <Pestana id="generales" texto="Datos generales" />
         <Pestana id="otros" texto="Otros datos" />
+        <Pestana id="cuentas" texto="Cuentas contables" />
       </div>
 
       <div className="border border-paperLine bg-white p-4 grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
-        {pestana === "generales" ? (
+        {pestana === "cuentas" ? (
+          <>
+            <div className="sm:col-span-4">
+              <p className="text-sm font-medium text-ink mb-1">Cuentas contables predeterminadas</p>
+              <p className="text-xs text-inkSoft mb-3">
+                Se sugieren automáticamente al registrar {prov ? "una compra a este proveedor" : "una venta a este cliente"} y al importar sus DTE. En cada documento puedes cambiar la cuenta de cobro o pago y las de cada concepto.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(prov
+                  ? [["cuenta_cargo_id", "Cuenta de cargo (gasto / costo / inventario)"], ["cuenta_iva_id", "Cuenta de IVA crédito fiscal"], ["cuenta_pago_id", "Cuenta de pago (caja o banco)"]]
+                  : [["cuenta_ingreso_id", "Cuenta de ingreso"], ["cuenta_iva_id", "Cuenta de IVA débito fiscal"], ["cuenta_cobro_id", "Cuenta donde se recibe el pago"]]
+                ).map(([k, txt]) => (
+                  <Campo key={k} etiqueta={txt}>
+                    <CuentaCombobox cuentas={cuentas} value={v[k] || ""} onChange={(id) => set({ [k]: id })} placeholder="Sin definir" />
+                  </Campo>
+                ))}
+              </div>
+            </div>
+          </>
+        ) : pestana === "generales" ? (
           <>
             <Campo etiqueta={`Código del ${nombreTipo}`} requerido>
               <input {...campo("codigo")} />
