@@ -22,7 +22,7 @@ export default function ReclasificarPartidas({ empresaId }) {
       const tipos = { venta: tipoVentas, compra: tipoCompras };
       const plan = await reclasificarPartidasDiarias({ empresaId, tipos, aplicar: false });
       if (plan.length === 0) {
-        setMensaje("No hay partidas diarias por reclasificar: ya están en los tipos elegidos.");
+        setMensaje("No hay partidas por reclasificar: ya están en los tipos elegidos.");
         return;
       }
       const nV = plan.filter((p) => p.clase === "venta").length;
@@ -40,7 +40,7 @@ export default function ReclasificarPartidas({ empresaId }) {
   return (
     <section className="border border-paperLine bg-[#F7F4EA] rounded-sm p-4 mt-6 space-y-3">
       <p className="text-sm font-medium">Reclasificar partidas ya contabilizadas</p>
-      <p className="text-xs text-inkSoft">Cambia el tipo de las partidas diarias creadas desde esta pantalla, por si las contabilizaste con un tipo distinto al que querías.</p>
+      <p className="text-xs text-inkSoft">Cambia el tipo de las partidas de ventas y compras ya creadas (las diarias de esta pantalla y las individuales de cada documento), por si quedaron con un tipo distinto al que querías.</p>
       <div className="grid sm:grid-cols-2 gap-4 text-sm">
         <div>
           <label className="block text-xs text-inkSoft mb-1">Partidas de ventas pasan a</label>
