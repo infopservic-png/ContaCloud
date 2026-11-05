@@ -20,6 +20,9 @@ const ICONO_PATHS = {
   // Edificio de banco con columnas (Bancos)
   bancos:
     "M3 10l9-6 9 6M5 10v9M9 10v9M15 10v9M19 10v9M3 21h18M4 10h16",
+  // Camión/equipo (Activo fijo): caja con ruedas
+  activos:
+    "M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 19a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6zM17 19a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6z",
   // Dos personas (Socios de negocios)
   socios:
     "M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3 2.7-5 6-5s6 2 6 5M17.5 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM15 20c.3-2.3 2.3-4 4.5-4s4.2 1.7 4.5 4",
@@ -81,6 +84,11 @@ const GRUPOS = [
       { href: "bancos", label: "Bancos" },
       { href: "transacciones-bancarias", label: "Transacciones" },
     ],
+  },
+  {
+    id: "activos",
+    label: "Activo fijo",
+    items: [{ href: "activos-fijos", label: "Propiedad, planta y equipo" }],
   },
   {
     id: "socios",
