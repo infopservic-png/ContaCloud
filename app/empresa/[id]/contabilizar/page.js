@@ -6,6 +6,7 @@ import { useEmpresa } from "@/lib/EmpresaContext";
 import { formatoMoneda } from "@/lib/contabilidad";
 import { documentosPendientes, contabilizar } from "@/lib/contabilizar";
 import { TIPOS_PARTIDA } from "@/lib/partidas";
+import ReclasificarPartidas from "@/components/ReclasificarPartidas";
 
 const MODOS = [
   { id: "documento", titulo: "Una partida por cada documento", texto: "Cada venta o compra genera su partida en el Diario al registrarla." },
@@ -24,7 +25,7 @@ export default function ContabilizarPage() {
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [tipoVentas, setTipoVentas] = useState("ingreso");
-  const [tipoCompras, setTipoCompras] = useState("egreso");
+  const [tipoCompras, setTipoCompras] = useState("diario");
   const [incluirVentas, setIncluirVentas] = useState(true);
   const [incluirCompras, setIncluirCompras] = useState(true);
   const [ventas, setVentas] = useState([]);
@@ -226,6 +227,8 @@ export default function ContabilizarPage() {
           </p>
         </section>
       )}
+
+      <ReclasificarPartidas empresaId={empresaId} />
     </div>
   );
 }
