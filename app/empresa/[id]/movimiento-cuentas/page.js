@@ -5,6 +5,7 @@ import { useEmpresa } from "@/lib/EmpresaContext";
 import { obtenerCuentasConMovimientos, formatoMoneda } from "@/lib/contabilidad";
 import { compararPartidas, etiquetaPartida } from "@/lib/partidas";
 import { exportarAExcel } from "@/lib/exportarExcel";
+import CuentaCombobox from "@/lib/CuentaCombobox";
 
 const ACREEDORAS = ["Pasivo", "Capital", "Ingreso"];
 
@@ -28,11 +29,14 @@ function enRango(codigo, cDesde, cHasta) {
 }
 
 export default function MovimientoCuentasPage() {
-  const { empresaId, empresa } = useEmpresa();
+  const { empresaId, empresa, cuentas } = useEmpresa();
   const [datos, setDatos] = useState([]);
   const [cargando, setCargando] = useState(true);
-  const [cDesde, setCDesde] = useState("");
-  const [cHasta, setCHasta] = useState("");
+  // Cuentas elegidas del catálogo (id); el rango se calcula con sus códigos.
+  const [idDesde, setIdDesde] = useState("");
+  const [idHasta, setIdHasta] = useState("");
+  const cDesde = cuentas.find((c) => c.id === idDesde)?.codigo || "";
+  const cHasta = cuentas.find((c) => c.id === idHasta)?.codigo || "";
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [vista, setVista] = useState("detalle"); // "detalle" | "resumen"
@@ -150,14 +154,14 @@ export default function MovimientoCuentasPage() {
       </div>
 
       <div className="flex flex-wrap items-end gap-4 mb-4 no-print text-xs text-inkSoft">
-        <label>
-          <span className="block mb-1">Cuenta desde (código)</span>
-          <input list="cuentas-lista" value={cDesde} onChange={(e) => setCDesde(e.target.value)} placeholder="ej. 1" className={sel + " w-32"} />
-        </label>
-        <label>
-          <span className="block mb-1">Cuenta hasta (código)</span>
-          <input list="cuentas-lista" value={cHasta} onChange={(e) => setCHasta(e.target.value)} placeholder="ej. 61" className={sel + " w-32"} />
-        </label>
+        <div className="w-64">
+          <span className="block mb-1">Cuenta desde</span>
+          <CuentaCombobox cuentas={cuentas} value={idDesde} onChange={setIdDesde} placeholder="Catálogo… (vacío = primera)" />
+        </div>
+        <div className="w-64">
+          <span className="block mb-1">Cuenta hasta</span>
+          <CuentaCombobox cuentas={cuentas} value={idHasta} onChange={setIdHasta} placeholder="Catálogo… (vacío = última)" />
+        </div>
         <label>
           <span className="block mb-1">Fecha desde</span>
           <input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className={sel} />
@@ -176,17 +180,12 @@ export default function MovimientoCuentasPage() {
         <label className="flex items-center gap-1.5 pb-1">
           <input type="checkbox" checked={sinMov} onChange={(e) => setSinMov(e.target.checked)} /> Incluir cuentas sin movimiento
         </label>
-        {(cDesde || cHasta || desde || hasta) && (
-          <button onClick={() => { setCDesde(""); setCHasta(""); setDesde(""); setHasta(""); }} className="underline underline-offset-2 hover:text-ink pb-1">
+        {(idDesde || idHasta || desde || hasta) && (
+          <button onClick={() => { setIdDesde(""); setIdHasta(""); setDesde(""); setHasta(""); }} className="underline underline-offset-2 hover:text-ink pb-1">
             Todas las cuentas y fechas
           </button>
         )}
       </div>
-      <datalist id="cuentas-lista">
-        {datos.map((c) => (
-          <option key={c.id} value={c.codigo}>{c.nombre}</option>
-        ))}
-      </datalist>
 
       {cuentasRep.length === 0 ? (
         <p className="text-inkSoft text-sm">No hay movimientos para mostrar con esos filtros.</p>
