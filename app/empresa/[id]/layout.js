@@ -23,6 +23,9 @@ const ICONO_PATHS = {
   // Camión/equipo (Activo fijo): caja con ruedas
   activos:
     "M3 7h11v9H3zM14 10h4l3 3v3h-7zM7 19a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6zM17 19a1.8 1.8 0 100-3.6 1.8 1.8 0 000 3.6z",
+  // Persona con tarjeta (Recursos humanos)
+  rrhh:
+    "M12 11a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4zM5.5 20c.4-3.3 3.2-5.4 6.5-5.4s6.1 2.1 6.5 5.4M3 3h18v18H3z",
   // Dos personas (Socios de negocios)
   socios:
     "M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3 2.7-5 6-5s6 2 6 5M17.5 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM15 20c.3-2.3 2.3-4 4.5-4s4.2 1.7 4.5 4",
@@ -89,6 +92,15 @@ const GRUPOS = [
     id: "activos",
     label: "Activo fijo",
     items: [{ href: "activos-fijos", label: "Propiedad, planta y equipo" }],
+  },
+  {
+    id: "rrhh",
+    label: "Recursos humanos",
+    items: [
+      { href: "empleados", label: "Empleados" },
+      { href: "planillas", label: "Planillas" },
+      { href: "rrhh-config", label: "Configuración" },
+    ],
   },
   {
     id: "socios",
