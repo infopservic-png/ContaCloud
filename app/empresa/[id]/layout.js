@@ -56,6 +56,7 @@ const GRUPOS = [
       { href: "transacciones", label: "Libro diario" },
       { href: "contabilizar", label: "Contabilizar" },
       { href: "mayor", label: "Mayor" },
+      { href: "movimiento-cuentas", label: "Movimiento de cuentas" },
       { href: "balance", label: "Balance de comprobación" },
       { href: "resultados", label: "Estado de resultados" },
       { href: "balance-general", label: "Balance general" },
