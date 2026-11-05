@@ -7,6 +7,7 @@ import { obtenerPartidas, formatoMoneda } from "@/lib/contabilidad";
 import CuentaCombobox from "@/lib/CuentaCombobox";
 import { exportarAExcel } from "@/lib/exportarExcel";
 import PartidaContable from "@/components/PartidaContable";
+import RespaldosPartidasPdf from "@/components/RespaldosPartidasPdf";
 import { TIPOS_PARTIDA, etiquetaPartida, compararPartidas, siguienteNumeroPartida, tipoPartida } from "@/lib/partidas";
 
 function lineaVacia() {
@@ -510,6 +511,10 @@ export default function TransaccionesPage() {
           Imprimir
         </button>
       </div>
+
+      {partidas.length > 0 && (
+        <RespaldosPartidasPdf partidas={partidas} empresa={empresa} empresaId={empresaId} />
+      )}
 
       {partidas.length > 0 && (
         <div className="flex flex-wrap items-center gap-4 mb-4 no-print text-xs">

@@ -18,11 +18,12 @@ const MODOS = [
 const ESTILOS = {
   importado: "bg-ledger/20 text-ledgerDark",
   valido: "bg-ledger/20 text-ledgerDark",
+  completado: "bg-ledger/20 text-ledgerDark",
   duplicado: "bg-paperLine text-inkSoft",
   invalido: "bg-rust/20 text-rust",
   error: "bg-rust/20 text-rust",
 };
-const ETIQUETAS = { importado: "Importado", valido: "Válido", duplicado: "Ya existe", invalido: "No cumple el esquema", error: "Error" };
+const ETIQUETAS = { importado: "Importado", completado: "Respaldo completado", valido: "Válido", duplicado: "Ya existe", invalido: "No cumple el esquema", error: "Error" };
 
 export default function ImportarPage() {
   const { empresa, cuentas, empresaId } = useEmpresa();
