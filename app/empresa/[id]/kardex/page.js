@@ -12,7 +12,10 @@ import {
   recalcularSecuencia,
   validarCostoDocumentos,
   sincronizarKardex,
+  METODOS_COSTEO,
+  etiquetaMetodo,
 } from "@/lib/kardex";
+import { recalcularKardexProductos } from "@/lib/ventasCompras";
 import { formatoMoneda } from "@/lib/contabilidad";
 import CuentaCombobox from "@/lib/CuentaCombobox";
 import { exportarAExcel } from "@/lib/exportarExcel";
@@ -38,7 +41,7 @@ function distinto(a, b) {
 }
 
 export default function KardexPage() {
-  const { cuentas, empresaId } = useEmpresa();
+  const { cuentas, empresaId, empresa, actualizarEmpresa } = useEmpresa();
 
   const [productos, setProductos] = useState([]);
   const [cargandoProductos, setCargandoProductos] = useState(true);
@@ -55,6 +58,8 @@ export default function KardexPage() {
   const [editandoMovId, setEditandoMovId] = useState(null);
   const [errorMov, setErrorMov] = useState(null);
   const [guardandoMov, setGuardandoMov] = useState(false);
+  const [cambiandoMetodo, setCambiandoMetodo] = useState(false);
+  const [avisoMetodo, setAvisoMetodo] = useState(null);
 
   async function cargarProductos() {
     setCargandoProductos(true);
@@ -147,7 +152,7 @@ export default function KardexPage() {
       created_at: new Date().toISOString(),
     };
     const lista = [...movimientos, candidato].sort(ordenarKardex);
-    const { error, resultado } = recalcularSecuencia(lista);
+    const { error, resultado } = recalcularSecuencia(lista, empresa?.metodo_costeo);
     if (error) {
       setErrorMov(error);
       return;
@@ -263,7 +268,7 @@ export default function KardexPage() {
       descripcion: form.descripcion.trim() || null,
     };
     const lista = [...movimientos.filter((m) => m.id !== editandoMovId), editado].sort(ordenarKardex);
-    const { error, resultado } = recalcularSecuencia(lista);
+    const { error, resultado } = recalcularSecuencia(lista, empresa?.metodo_costeo);
     if (error) {
       setErrorMov(error);
       return;
@@ -339,7 +344,7 @@ export default function KardexPage() {
     if (!confirmado) return;
 
     const lista = movimientos.filter((x) => x.id !== m.id);
-    const { error, resultado } = recalcularSecuencia(lista);
+    const { error, resultado } = recalcularSecuencia(lista, empresa?.metodo_costeo);
     if (error) {
       alert("No se puede eliminar: " + error);
       return;
@@ -430,9 +435,66 @@ export default function KardexPage() {
     exportarAExcel(`kardex-${producto.nombre}`, [{ nombre: "Kardex", filas }]);
   }
 
+  async function cambiarMetodo(nuevo) {
+    const actual = empresa?.metodo_costeo === "peps" ? "peps" : "promedio";
+    if (nuevo === actual) return;
+    if (!confirm(`Cambiar el método a «${etiquetaMetodo(nuevo)}» recalcula TODO el kardex de todos los productos, corrige el costo de venta de las ventas ya registradas y ajusta sus partidas. ¿Continuar?`)) return;
+    setCambiandoMetodo(true);
+    setAvisoMetodo(null);
+    // Primero se recalcula (si algún producto quedara negativo, no se cambia nada)
+    const res = await recalcularKardexProductos(productos, nuevo);
+    if (res.error) {
+      setCambiandoMetodo(false);
+      return setAvisoMetodo({ error: "No se cambió el método: " + res.error });
+    }
+    try {
+      await actualizarEmpresa({ metodo_costeo: nuevo });
+    } catch (e) {
+      setCambiandoMetodo(false);
+      return setAvisoMetodo({ error: "Se recalculó el kardex pero no se pudo guardar el método (¿corriste la migración 31?): " + (e.message || e) });
+    }
+    setAvisoMetodo({
+      ok: `Método cambiado a ${etiquetaMetodo(nuevo)}. Productos recalculados: ${res.productos}; renglones modificados: ${res.renglones}; ventas ajustadas: ${res.ventas}.` +
+        (res.sinPartida?.length ? ` Ojo: estas ventas están en una partida diaria agrupada y su partida no se ajustó sola: ${res.sinPartida.join(", ")}.` : ""),
+    });
+    if (productoId) await cargarMovimientos(productoId);
+    setCambiandoMetodo(false);
+  }
+
+  async function recalcularTodo() {
+    const metodo = empresa?.metodo_costeo === "peps" ? "peps" : "promedio";
+    setCambiandoMetodo(true);
+    setAvisoMetodo(null);
+    const res = await recalcularKardexProductos(productos, metodo);
+    setCambiandoMetodo(false);
+    if (res.error) return setAvisoMetodo({ error: res.error });
+    setAvisoMetodo({ ok: `Kardex recalculado (${etiquetaMetodo(metodo)}). Renglones modificados: ${res.renglones}; ventas ajustadas: ${res.ventas}.` });
+    if (productoId) await cargarMovimientos(productoId);
+  }
+
   return (
     <div>
       <h2 className="font-display text-lg font-semibold mb-4 no-print">Kardex de Inventarios</h2>
+
+      <div className="no-print bg-[#F7F4EA] border border-paperLine rounded-sm p-3 mb-4 flex flex-wrap items-end gap-4">
+        <label>
+          <span className="block text-xs font-medium text-inkSoft mb-1">Método de costeo de la empresa</span>
+          <select
+            value={empresa?.metodo_costeo === "peps" ? "peps" : "promedio"}
+            onChange={(e) => cambiarMetodo(e.target.value)}
+            disabled={cambiandoMetodo}
+            className="border border-paperLine rounded-sm px-2 py-1.5 text-sm bg-white"
+          >
+            {METODOS_COSTEO.map((m) => (<option key={m.valor} value={m.valor}>{m.etiqueta}</option>))}
+          </select>
+        </label>
+        <button type="button" onClick={recalcularTodo} disabled={cambiandoMetodo || productos.length === 0} className="text-xs text-accentDark hover:underline disabled:opacity-50">
+          {cambiandoMetodo ? "Procesando…" : "Recalcular todo el kardex"}
+        </button>
+        <p className="text-xs text-inkSoft flex-1 min-w-[240px]">Cambiar el método recalcula el kardex completo y ajusta el costo de las ventas ya registradas y sus partidas.</p>
+        {avisoMetodo?.error && <p className="w-full text-sm text-rust">{avisoMetodo.error}</p>}
+        {avisoMetodo?.ok && <p className="w-full text-sm text-ledger">{avisoMetodo.ok}</p>}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
         {/* Lista de productos */}
