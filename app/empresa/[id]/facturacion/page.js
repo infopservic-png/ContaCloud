@@ -13,6 +13,7 @@ import { configVC, calcularDocumento } from "@/lib/ventasCompras";
 import { formatoMoneda } from "@/lib/contabilidad";
 import { TIPOS_DTE, TIPO_DOCUMENTO_VENTA } from "@/lib/dte";
 import { emitirDte, eliminarDte } from "@/lib/dteEmision";
+import EmitirFse from "@/components/EmitirFse";
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const receptorVacio = () => ({
@@ -43,6 +44,7 @@ export default function FacturacionPage() {
   const [error, setError] = useState(null);
   const [exito, setExito] = useState(null);
   const [verJsonId, setVerJsonId] = useState(null);
+  const [modo, setModo] = useState("venta"); // venta (01/03) o fse (14, es una compra)
 
   const [tipoDte, setTipoDte] = useState("01");
   const [fecha, setFecha] = useState(hoy());
@@ -213,7 +215,7 @@ export default function FacturacionPage() {
   async function eliminar(d) {
     if (
       !window.confirm(
-        `¿Eliminar el documento ${d.numero_control}?\n\nSe revierten su partida contable, la salida del Kardex y la cuenta por cobrar (si es a crédito).`
+        d.compra_id ? `¿Eliminar el documento ${d.numero_control}?\n\nSe elimina también la compra, su partida contable y la cuenta por pagar (si es a crédito).` : `¿Eliminar el documento ${d.numero_control}?\n\nSe revierten su partida contable, la salida del Kardex y la cuenta por cobrar (si es a crédito).`
       )
     ) {
       return;
@@ -236,7 +238,7 @@ export default function FacturacionPage() {
     <div className="space-y-10">
       <DatosEmisor empresa={empresa} onGuardado={(v) => actualizarEmpresa(v)} />
 
-      {faltantes.length > 0 && (
+      {modo === "venta" && faltantes.length > 0 && (
         <div className="bg-accent/10 border border-accent/40 rounded-sm px-4 py-3 text-sm">
           Para emitir este tipo de documento falta configurar: <strong>{faltantes.join(", ")}</strong>.{" "}
           <Link href={`/empresa/${empresaId}/ventas`} className="underline text-accentDark">
@@ -245,7 +247,18 @@ export default function FacturacionPage() {
         </div>
       )}
 
-      <section className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6">
+      <div className="flex gap-2 text-sm">
+        {[["venta", "Factura / Crédito fiscal (venta)"], ["fse", "Factura de sujeto excluido (14 — compra)"]].map(([v, t]) => (
+          <button key={v} type="button" onClick={() => setModo(v)}
+            className={"px-3 py-1.5 rounded-sm border " + (modo === v ? "bg-brand text-onBrand border-brand" : "border-paperLine bg-white hover:bg-paper")}>
+            {t}
+          </button>
+        ))}
+      </div>
+
+      {modo === "fse" && <EmitirFse onEmitido={cargar} />}
+
+      <section className={"bg-[#F7F4EA] border border-paperLine rounded-sm p-6 " + (modo === "fse" ? "hidden" : "")}>
         <h2 className="font-display text-base font-semibold mb-1">Emitir documento</h2>
         <p className="text-xs text-inkSoft mb-4">
           Al emitir se registra una venta completa: partida con costo de venta, salida del Kardex y,

@@ -80,6 +80,7 @@ const GRUPOS = [
       { href: "anexo-iva-contribuyentes", label: "Anexo ventas contribuyentes" },
       { href: "anexo-iva-consumidor", label: "Anexo ventas consumidor" },
       { href: "anexo-iva-compras", label: "Anexo compras" },
+      { href: "anexo-iva-sujetos-excluidos", label: "Casilla 66 sujetos excluidos" },
       { href: "importar", label: "Importar DTE" },
     ],
   },

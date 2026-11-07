@@ -129,20 +129,23 @@ export default function AnexoF14Page() {
           <span className={lbl}>Periodo</span>
           <input type="month" value={ym} onChange={(e) => setYm(e.target.value)} className="border border-paperLine rounded-sm px-2 py-1 bg-white text-sm" />
         </label>
-        {cfg && filas.length > 0 && (
+        {cfg && filas.length > 0 && (() => {
+          const ref = filas.find((x) => !x.deCompra) || filas[0];
+          return (
           <>
-            <label><span className={lbl}>Tipo de operación (todas)</span><Sel ancho="w-44" valor={filas[0].tipoOperacion} opciones={TIPO_OPERACION} onChange={(v) => aTodas({ tipoOperacion: v })} /></label>
-            <label><span className={lbl}>Clasificación (todas)</span><Sel ancho="w-32" valor={filas[0].clasificacion} opciones={CLASIFICACION} onChange={(v) => aTodas({ clasificacion: v })} /></label>
-            <label><span className={lbl}>Sector (todas)</span><Sel ancho="w-36" valor={filas[0].sector} opciones={SECTOR} onChange={(v) => aTodas({ sector: v })} /></label>
-            <label><span className={lbl}>Tipo costo/gasto (todas)</span><Sel ancho="w-48" valor={filas[0].tipoCosto} opciones={TIPO_COSTO} onChange={(v) => aTodas({ tipoCosto: v })} /></label>
+            <label><span className={lbl}>Tipo de operación (todas)</span><Sel ancho="w-44" valor={ref.tipoOperacion} opciones={TIPO_OPERACION} onChange={(v) => aTodas({ tipoOperacion: v })} /></label>
+            <label><span className={lbl}>Clasificación (todas)</span><Sel ancho="w-32" valor={ref.clasificacion} opciones={CLASIFICACION} onChange={(v) => aTodas({ clasificacion: v })} /></label>
+            <label><span className={lbl}>Sector (todas)</span><Sel ancho="w-36" valor={ref.sector} opciones={SECTOR} onChange={(v) => aTodas({ sector: v })} /></label>
+            <label><span className={lbl}>Tipo costo/gasto (todas)</span><Sel ancho="w-48" valor={ref.tipoCosto} opciones={TIPO_COSTO} onChange={(v) => aTodas({ tipoCosto: v })} /></label>
             <button
-              onClick={() => guardarPredeterminados({ f14_tipo_operacion: filas[0].tipoOperacion, f14_clasificacion: filas[0].clasificacion, f14_sector: filas[0].sector, f14_tipo_costo: filas[0].tipoCosto })}
+              onClick={() => guardarPredeterminados({ f14_tipo_operacion: ref.tipoOperacion, f14_clasificacion: ref.clasificacion, f14_sector: ref.sector, f14_tipo_costo: ref.tipoCosto })}
               className="text-xs text-accentDark hover:underline"
             >
               Guardar como predeterminados
             </button>
           </>
-        )}
+          );
+        })()}
       </div>
 
       {error && <p className="text-sm text-rust">{error}</p>}
@@ -210,7 +213,7 @@ export default function AnexoF14Page() {
       )}
       <p className="text-xs text-inkSoft no-print">
         Empleados: se suman las quincenas del mes; el código es 01 si hubo retención y 60 si cayó en el Tramo I. Compras: entran las que tienen retención de renta
-        (o la que trae el DTE importado). El archivo CSV usa el formato de la plantilla de Hacienda (separado por «;»).
+        (o la que trae el DTE importado) y llevan código 8 «más de 1 anexo» en operación, clasificación, sector y costo/gasto, porque ya se informan en el F-07. El archivo CSV usa el formato de la plantilla de Hacienda (separado por «;»).
       </p>
     </div>
   );

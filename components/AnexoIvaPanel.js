@@ -19,6 +19,7 @@ const TITULOS = {
   contribuyentes: "Anexo de ventas a contribuyentes (F-07)",
   consumidor: "Anexo de ventas a consumidor final (F-07)",
   compras: "Anexo de compras (F-07)",
+  excluidos: "Casilla 66 — compras a sujetos excluidos (F-07)",
 };
 const TIPOS_VENTA = { contribuyentes: [["03", "03 Comprobante de crédito fiscal"], ["05", "05 Nota de crédito"], ["06", "06 Nota de débito"], ["07", "07 Comprobante de retención"], ["08", "08 Comprobante de liquidación"], ["11", "11 Factura de exportación"]], consumidor: [["01", "01 Factura"], ["02", "02 Factura simplificada"], ["10", "10 Tiquete"], ["11", "11 Exportación"]] };
 const TIPOS_COMPRA = [["03", "03 Comprobante de crédito fiscal"], ["05", "05 Nota de crédito"], ["06", "06 Nota de débito"], ["11", "11 Exportación"], ["12", "12 Declaración de mercancías"], ["13", "13 Mandamiento de ingreso"]];
@@ -76,7 +77,8 @@ export default function AnexoIvaPanel({ tipo }) {
   const incluidas = useMemo(() => filas.filter((f) => f.incluir), [filas]);
   const suma = (k) => r2(incluidas.reduce((a, f) => a + Number(f[k] || 0), 0));
 
-  const sinId = incluidas.filter((f) => (esCompras || esContrib) && !f.nitNrc && !f.dui);
+  const esExcl = tipo === "excluidos";
+  const sinId = incluidas.filter((f) => (esExcl ? !f.idDoc : (esCompras || esContrib) && !f.nitNrc && !f.dui));
   const dteIncompleto = incluidas.filter((f) => f.clase === "4" && (!f.serie && !esCompras));
 
   function descargar() {
@@ -90,7 +92,11 @@ export default function AnexoIvaPanel({ tipo }) {
 
   function excel() {
     let cab, datos, tot;
-    if (esContrib) {
+    if (esExcl) {
+      cab = ["Tipo doc. identidad", "Identificación", "Nombre", "Fecha", "Serie", "Nº documento", "Monto de la operación", "Retención IVA 13%", "Tipo operación", "Clasificación", "Sector", "Tipo costo/gasto"];
+      datos = incluidas.map((f) => [f.tipoId, f.idDoc, f.nombre, fechaDMA(f.fecha), f.serie, f.numDoc, f.monto, f.retIva, f.tipoOp, f.clasificacion, f.sector, f.tipoCosto]);
+      tot = ["", "", "", "", "", "Totales:", suma("monto"), suma("retIva")];
+    } else if (esContrib) {
       cab = ["Fecha", "Clase", "Tipo", "Resolución", "Serie", "Nº documento", "Control interno", "NIT/NRC", "DUI", "Cliente", "Exentas", "No sujetas", "Gravadas", "Débito fiscal", "Total", "Tipo operación renta", "Tipo ingreso renta"];
       datos = incluidas.map((f) => [fechaDMA(f.fecha), f.clase, f.tipo, f.resolucion, f.serie, f.numDoc, f.control, f.nitNrc, f.dui, f.nombre, f.exentas, f.noSujetas, f.gravadas, f.debito, f.total, f.tipoOp, f.tipoIngreso]);
       tot = ["", "", "", "", "", "", "", "", "", "Totales:", suma("exentas"), suma("noSujetas"), suma("gravadas"), suma("debito"), suma("total")];
@@ -110,6 +116,95 @@ export default function AnexoIvaPanel({ tipo }) {
   const lbl = "block text-xs font-medium text-inkSoft mb-1";
   const th = "font-normal px-2 py-1 ";
   const num = "px-2 py-1 text-right font-num tabular";
+
+  const encabezado = (
+    <>
+      <div className="flex flex-wrap items-end justify-between gap-3 no-print">
+        <h2 className="font-display text-lg font-semibold">{TITULOS[tipo]}</h2>
+        <div className="flex items-center gap-3">
+          <button onClick={excel} disabled={!incluidas.length} className="text-xs text-ledgerDark hover:underline disabled:opacity-50">Exportar a Excel</button>
+          <button onClick={descargar} disabled={!incluidas.length} className="sac-btn sac-btn-primario font-medium">Descargar CSV para Hacienda</button>
+        </div>
+      </div>
+      <div className="no-print bg-[#F7F4EA] border border-paperLine rounded-sm p-3 flex flex-wrap items-end gap-4">
+        <label>
+          <span className={lbl}>Periodo</span>
+          <input type="month" value={ym} onChange={(e) => setYm(e.target.value)} className="border border-paperLine rounded-sm px-2 py-1 bg-white text-sm" />
+        </label>
+        {filas.length > 0 && (
+          <>
+            <label><span className={lbl}>Tipo operación (todas)</span><Sel ancho="w-40" valor={filas[0].tipoOp} opciones={TIPO_OPERACION} onChange={(v) => aTodas({ tipoOp: v })} /></label>
+            <label><span className={lbl}>Clasificación (todas)</span><Sel ancho="w-32" valor={filas[0].clasificacion} opciones={CLASIFICACION} onChange={(v) => aTodas({ clasificacion: v })} /></label>
+            <label><span className={lbl}>Sector (todas)</span><Sel ancho="w-36" valor={filas[0].sector} opciones={SECTOR} onChange={(v) => aTodas({ sector: v })} /></label>
+            <label><span className={lbl}>Tipo costo/gasto (todas)</span><Sel ancho="w-44" valor={filas[0].tipoCosto} opciones={TIPO_COSTO} onChange={(v) => aTodas({ tipoCosto: v })} /></label>
+          </>
+        )}
+      </div>
+    </>
+  );
+
+  if (esExcl) {
+    return (
+      <div className="space-y-5">
+        {encabezado}
+        {error && <p className="text-sm text-rust">{error}</p>}
+        {sinId.length > 0 && <p className="text-xs text-rust">Sin NIT/DUI: {sinId.map((f) => f.nombre || f.etiqueta).join(", ")}. Complétalos en Proveedores.</p>}
+        {cargando ? (
+          <p className="text-sm text-inkSoft">Cargando…</p>
+        ) : filas.length === 0 ? (
+          <p className="text-sm text-inkSoft">No hay compras a sujetos excluidos en el periodo. Marca «Factura de sujeto excluido» al registrar la compra.</p>
+        ) : (
+          <div className="overflow-x-auto bg-white border border-paperLine rounded-sm">
+            <table className="w-full text-xs">
+              <thead className="bg-brand text-onBrand">
+                <tr>
+                  <th className="px-2 py-1 no-print" />
+                  <th className={th + "text-left"}>Fecha</th>
+                  <th className={th + "text-left"}>Tipo id.</th>
+                  <th className={th + "text-left"}>Identificación</th>
+                  <th className={th + "text-left"}>Nombre</th>
+                  <th className={th + "text-left"}>Serie / sello</th>
+                  <th className={th + "text-left"}>Documento</th>
+                  <th className={th + "text-right"}>Monto</th>
+                  <th className={th + "text-right"}>Ret. IVA 13%</th>
+                  <th className={th + "text-left"}>Oper.</th>
+                  <th className={th + "text-left"}>Clasif.</th>
+                  <th className={th + "text-left"}>Sector</th>
+                  <th className={th + "text-left"}>Costo/gasto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filas.map((f) => (
+                  <tr key={f.id} className={"border-t border-paperLine " + (f.incluir ? "" : "opacity-40")}>
+                    <td className="px-2 py-1 no-print"><input type="checkbox" checked={f.incluir} onChange={(e) => cambiar(f.id, { incluir: e.target.checked })} /></td>
+                    <td className="px-2 py-1 whitespace-nowrap">{fechaDMA(f.fecha)}</td>
+                    <td className="px-2 py-1"><Sel ancho="w-20" valor={f.tipoId} opciones={[["1", "NIT"], ["2", "DUI"], ["3", "Otro"]]} onChange={(v) => cambiar(f.id, { tipoId: v })} /></td>
+                    <td className="px-2 py-1"><Txt valor={f.idDoc} onChange={(v) => cambiar(f.id, { idDoc: v })} ancho="w-28" /></td>
+                    <td className="px-2 py-1">{f.nombre}</td>
+                    <td className="px-2 py-1"><Txt valor={f.serie} onChange={(v) => cambiar(f.id, { serie: v })} ancho="w-24" /></td>
+                    <td className="px-2 py-1"><Txt valor={f.numDoc} onChange={(v) => cambiar(f.id, { numDoc: v })} ancho="w-32" /></td>
+                    <td className={num}>{m(f.monto)}</td>
+                    <td className="px-2 py-1 text-right"><input type="number" step="0.01" min="0" value={f.retIva} onChange={(e) => cambiar(f.id, { retIva: e.target.value })} className="w-20 border border-paperLine rounded-sm px-1 py-0.5 text-xs text-right font-num" /></td>
+                    <td className="px-2 py-1"><Sel ancho="w-14" valor={f.tipoOp} opciones={TIPO_OPERACION} onChange={(v) => cambiar(f.id, { tipoOp: v })} /></td>
+                    <td className="px-2 py-1"><Sel ancho="w-14" valor={f.clasificacion} opciones={CLASIFICACION} onChange={(v) => cambiar(f.id, { clasificacion: v })} /></td>
+                    <td className="px-2 py-1"><Sel ancho="w-14" valor={f.sector} opciones={SECTOR} onChange={(v) => cambiar(f.id, { sector: v })} /></td>
+                    <td className="px-2 py-1"><Sel ancho="w-14" valor={f.tipoCosto} opciones={TIPO_COSTO} onChange={(v) => cambiar(f.id, { tipoCosto: v })} /></td>
+                  </tr>
+                ))}
+                <tr className="border-t border-black font-semibold">
+                  <td colSpan={7} className="px-2 py-1 text-right">Totales ({incluidas.length} documentos):</td>
+                  <td className={num}>{m(suma("monto"))}</td>
+                  <td className={num}>{m(suma("retIva"))}</td>
+                  <td colSpan={4} />
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="text-xs text-inkSoft no-print">Se alimenta de las compras marcadas como «Factura de sujeto excluido». La retención de IVA es 0 salvo que la captures aquí. Formato idéntico al de la plantilla (campos separados por «;», anexo 5).</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
