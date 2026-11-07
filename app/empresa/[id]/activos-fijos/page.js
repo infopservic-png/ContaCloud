@@ -17,6 +17,8 @@ import {
   obtenerDepreciaciones,
   planDepreciacion,
   depreciarMes,
+  resumenBaja,
+  darDeBajaActivo,
 } from "@/lib/activosFijos";
 
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -52,6 +54,12 @@ export default function ActivosFijosPage() {
   const [form, setForm] = useState(formVacio());
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
+
+  // Baja / venta de un activo
+  const [bajaActivo, setBajaActivo] = useState(null);
+  const [baja, setBaja] = useState(null);
+  const [errorBaja, setErrorBaja] = useState(null);
+  const [dandoBaja, setDandoBaja] = useState(false);
 
   const [mes, setMes] = useState(hoy().slice(0, 7));
   const [trabajando, setTrabajando] = useState(false);
@@ -137,6 +145,50 @@ export default function ActivosFijosPage() {
     setError(null);
     setMostrarForm(true);
   }
+  function abrirBaja(a) {
+    setBajaActivo(a);
+    setBaja({
+      tipo: "venta",
+      fecha: hoy(),
+      precio: "",
+      iva: "no_sujeto", // al estar totalmente depreciado normalmente no se grava
+      cuentaCobroId: "",
+      cuentaIvaId: empresa?.cuenta_iva_debito_cf_id || empresa?.cuenta_iva_debito_ccf_id || "",
+      cuentaResultadoId: "",
+      cuentaActivoId: a.cuenta_activo_id || "",
+    });
+    setErrorBaja(null);
+    setMostrarForm(false);
+  }
+  function cerrarBaja() {
+    setBajaActivo(null);
+    setBaja(null);
+    setErrorBaja(null);
+  }
+  async function confirmarBaja(e) {
+    e.preventDefault();
+    setErrorBaja(null);
+    const r = resumenBaja(bajaActivo, deps, { fecha: baja.fecha, tipo: baja.tipo, precio: baja.precio, conIva: baja.iva === "gravado" });
+    const txt = baja.tipo === "venta" ? "la venta" : "la baja";
+    if (!confirm(`Se generará UNA partida con ${txt} de «${bajaActivo.nombre}»` + (r.depPendiente > 0 ? `, incluyendo ${formatoMoneda(r.depPendiente)} de depreciación pendiente` : "") + ". ¿Continuar?")) return;
+    setDandoBaja(true);
+    try {
+      const res = await darDeBajaActivo({
+        empresaId,
+        activo: bajaActivo,
+        depreciaciones: deps,
+        datos: { fecha: baja.fecha, tipo: baja.tipo, precio: baja.precio, conIva: baja.iva === "gravado", cuentaCobroId: baja.cuentaCobroId, cuentaIvaId: baja.cuentaIvaId, cuentaResultadoId: baja.cuentaResultadoId, cuentaActivoId: baja.cuentaActivoId },
+      });
+      setMensaje(`${baja.tipo === "venta" ? "Venta" : "Baja"} de «${bajaActivo.nombre}» contabilizada (partida DIA-${String(res.numero).padStart(4, "0")}).`);
+      cerrarBaja();
+      await cargar();
+    } catch (err) {
+      setErrorBaja("No se pudo registrar: " + (err.message || err));
+    } finally {
+      setDandoBaja(false);
+    }
+  }
+
   function cancelar() {
     setMostrarForm(false);
     setEditandoId(null);
@@ -230,8 +282,10 @@ export default function ActivosFijosPage() {
   const m = (n) => formatoMoneda(n);
   const inp = "w-full border border-paperLine rounded-sm px-2 py-1 text-sm bg-white";
   const lbl = "block text-xs font-medium text-inkSoft mb-1";
-  const totCosto = activos.reduce((a, x) => a + Number(x.costo), 0);
-  const totAcum = activos.reduce((a, x) => a + (acumPorActivo.get(x.id) || 0), 0);
+  const vigentes = activos.filter((x) => x.estado !== "baja");
+  const totCosto = vigentes.reduce((a, x) => a + Number(x.costo), 0);
+  const totAcum = vigentes.reduce((a, x) => a + (acumPorActivo.get(x.id) || 0), 0);
+  const resBaja = bajaActivo && baja ? resumenBaja(bajaActivo, deps, { fecha: baja.fecha, tipo: baja.tipo, precio: baja.precio, conIva: baja.iva === "gravado" }) : null;
 
   return (
     <div className="space-y-6">
@@ -274,6 +328,56 @@ export default function ActivosFijosPage() {
         </form>
       )}
 
+      {bajaActivo && baja && (
+        <form onSubmit={confirmarBaja} className="no-print bg-[#F7F4EA] border border-paperLine rounded-sm p-4 space-y-4">
+          <p className="text-xs font-semibold text-inkSoft uppercase tracking-wide">Dar de baja / vender — {bajaActivo.codigo} {bajaActivo.nombre}</p>
+          <div className="grid sm:grid-cols-4 gap-3">
+            <div>
+              <label className={lbl}>Operación</label>
+              <select className={inp} value={baja.tipo} onChange={(e) => setBaja({ ...baja, tipo: e.target.value })}>
+                <option value="venta">Venta</option>
+                <option value="baja">Baja sin venta (desecho / pérdida)</option>
+              </select>
+            </div>
+            <div><label className={lbl}>Fecha</label><input type="date" className={inp} value={baja.fecha} onChange={(e) => setBaja({ ...baja, fecha: e.target.value })} /></div>
+            {baja.tipo === "venta" && (
+              <>
+                <div><label className={lbl}>Precio de venta (sin IVA)</label><input type="number" step="0.01" min="0" className={inp + " font-num"} value={baja.precio} onChange={(e) => setBaja({ ...baja, precio: e.target.value })} /></div>
+                <div>
+                  <label className={lbl}>IVA</label>
+                  <select className={inp} value={baja.iva} onChange={(e) => setBaja({ ...baja, iva: e.target.value })}>
+                    <option value="no_sujeto">No sujeto</option>
+                    <option value="gravado">Gravado 13%</option>
+                  </select>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {baja.tipo === "venta" && <div><label className={lbl}>Cuenta donde se recibe el cobro</label><CuentaCombobox cuentas={cuentas} value={baja.cuentaCobroId} onChange={(id) => setBaja({ ...baja, cuentaCobroId: id })} /></div>}
+            {baja.tipo === "venta" && baja.iva === "gravado" && <div><label className={lbl}>IVA débito fiscal</label><CuentaCombobox cuentas={cuentas} value={baja.cuentaIvaId} onChange={(id) => setBaja({ ...baja, cuentaIvaId: id })} /></div>}
+            <div><label className={lbl}>Cuenta del activo (se acredita)</label><CuentaCombobox cuentas={cuentas} value={baja.cuentaActivoId} onChange={(id) => setBaja({ ...baja, cuentaActivoId: id })} /></div>
+            <div><label className={lbl}>Ganancia / pérdida en {baja.tipo === "venta" ? "venta" : "baja"} de activo</label><CuentaCombobox cuentas={cuentas} value={baja.cuentaResultadoId} onChange={(id) => setBaja({ ...baja, cuentaResultadoId: id })} /></div>
+          </div>
+          {resBaja && (
+            <table className="text-xs bg-white border border-paperLine">
+              <tbody>
+                <tr><td className="px-2 py-1">Costo del activo</td><td className="px-2 py-1 text-right font-num tabular">{m(bajaActivo.costo)}</td></tr>
+                <tr><td className="px-2 py-1">Depreciación acumulada{resBaja.depPendiente > 0 ? ` (incluye ${m(resBaja.depPendiente)} pendiente, ${resBaja.pendientes.length} mes(es))` : ""}</td><td className="px-2 py-1 text-right font-num tabular">{m(resBaja.acumTotal)}</td></tr>
+                <tr className="border-t border-paperLine font-semibold"><td className="px-2 py-1">Valor en libros</td><td className="px-2 py-1 text-right font-num tabular">{m(resBaja.valorLibros)}</td></tr>
+                {baja.tipo === "venta" && <tr><td className="px-2 py-1">Precio de venta{resBaja.iva > 0 ? ` + IVA ${m(resBaja.iva)}` : " (IVA no sujeto)"}</td><td className="px-2 py-1 text-right font-num tabular">{m(resBaja.cobro)}</td></tr>}
+                <tr className="font-semibold"><td className="px-2 py-1">{resBaja.resultado >= 0 ? "Ganancia" : "Pérdida"}</td><td className="px-2 py-1 text-right font-num tabular">{m(Math.abs(resBaja.resultado))}</td></tr>
+              </tbody>
+            </table>
+          )}
+          {errorBaja && <p className="text-xs text-rust">{errorBaja}</p>}
+          <div className="flex gap-2">
+            <button type="submit" disabled={dandoBaja} className="bg-brand text-onBrand px-3 py-1.5 rounded-sm text-xs font-medium hover:bg-brandDark disabled:opacity-60">{dandoBaja ? "Contabilizando…" : "Contabilizar"}</button>
+            <button type="button" onClick={cerrarBaja} className="px-3 py-1.5 rounded-sm text-xs font-medium text-inkSoft hover:underline">Cancelar</button>
+          </div>
+        </form>
+      )}
+
       <section className="partida-imprimir bg-white border border-paperLine px-6 py-5 text-[12px] text-black">
         <div className="text-center mb-3">
           <p className="text-[11px] uppercase">{empresa?.nombre}</p>
@@ -300,19 +404,27 @@ export default function ActivosFijosPage() {
               <tbody>
                 {activos.map((a) => {
                   const ac = acumPorActivo.get(a.id) || 0;
+                  const dadoDeBaja = a.estado === "baja";
                   return (
-                    <tr key={a.id}>
+                    <tr key={a.id} className={dadoDeBaja ? "text-inkSoft" : ""}>
                       <td className="px-2 py-[2px] align-top">{a.codigo}</td>
-                      <td className="px-2 py-[2px] align-top">{a.nombre}{a.categoria ? <span className="block text-[10px] text-inkSoft">{a.categoria}</span> : null}</td>
+                      <td className="px-2 py-[2px] align-top">{a.nombre}{a.categoria ? <span className="block text-[10px] text-inkSoft">{a.categoria}</span> : null}{dadoDeBaja ? <span className="block text-[10px] text-rust">{a.tipo_baja === "venta" ? "Vendido" : "Dado de baja"} el {fechaCorta(a.fecha_baja)}{a.tipo_baja === "venta" && a.precio_venta != null ? ` por ${m(a.precio_venta)}` : ""}</span> : null}</td>
                       <td className="px-2 py-[2px] align-top">{fechaCorta(a.fecha_adquisicion)}</td>
                       <td className="px-2 py-[2px] text-right font-num tabular align-top">{m(a.costo)}</td>
                       <td className="px-2 py-[2px] text-right align-top">{a.vida_util_meses / 12} años · {Number(a.tasa_anual)}%</td>
                       <td className="px-2 py-[2px] text-right font-num tabular align-top">{m(depreciacionMensual(a))}</td>
                       <td className="px-2 py-[2px] text-right font-num tabular align-top">{m(ac)}</td>
-                      <td className="px-2 py-[2px] text-right font-num tabular align-top">{m(Number(a.costo) - ac)}</td>
+                      <td className="px-2 py-[2px] text-right font-num tabular align-top">{dadoDeBaja ? "—" : m(Number(a.costo) - ac)}</td>
                       <td className="no-print px-2 py-[2px] whitespace-nowrap align-top text-xs">
-                        <button onClick={() => editar(a)} className="text-accentDark hover:underline mr-2">Editar</button>
-                        <button onClick={() => eliminar(a)} className="text-rust hover:underline">Eliminar</button>
+                        {dadoDeBaja ? (
+                          <span className="text-inkSoft">Para revertir, elimina su partida en el Libro diario</span>
+                        ) : (
+                          <>
+                            <button onClick={() => editar(a)} className="text-accentDark hover:underline mr-2">Editar</button>
+                            <button onClick={() => abrirBaja(a)} className="text-accentDark hover:underline mr-2">Baja / vender</button>
+                            <button onClick={() => eliminar(a)} className="text-rust hover:underline">Eliminar</button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   );

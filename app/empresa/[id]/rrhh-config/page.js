@@ -15,6 +15,8 @@ const NUMEROS = [
   ["salario_minimo", "Salario mínimo mensual ($)"],
   ["vacaciones_dias", "Días de vacaciones al año"],
   ["vacaciones_recargo_pct", "Recargo de vacaciones (%)"],
+  ["deduccion_anual", "Deducción fija anual de renta ($; 0 = no aplicar)"],
+  ["deduccion_tope_ingresos", "Deducción: aplica si ingresos anuales ≤ ($)"],
 ];
 
 function TablaRenta({ titulo, filas, onChange }) {
