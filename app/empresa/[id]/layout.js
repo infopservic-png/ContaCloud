@@ -1,5 +1,6 @@
 "use client";
 
+import AvisoLicencia from "@/components/AvisoLicencia";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
 import Link from "next/link";
@@ -232,6 +233,7 @@ export default function EmpresaLayout({ children }) {
             pertenece a {empresa.propietario_email || "otro usuario"}.
           </div>
         )}
+        <AvisoLicencia />
         <header className="flex items-center justify-between mb-6 no-print">
           <div>
             <Link

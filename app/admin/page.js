@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import AdminLicencias from "@/components/AdminLicencias";
 
 export default function AdminPage() {
   const router = useRouter();
@@ -125,6 +126,9 @@ export default function AdminPage() {
         </p>
       </header>
 
+      <AdminLicencias empresas={empresas} />
+
+      <h2 className="font-display text-lg font-semibold mb-3">Empresas</h2>
       <input
         value={busqueda}
         onChange={(e) => setBusqueda(e.target.value)}

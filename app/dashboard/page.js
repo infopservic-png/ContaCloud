@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import AvisoLicencia from "@/components/AvisoLicencia";
 import Marca from "@/components/Marca";
 import { supabase } from "@/lib/supabaseClient";
 import { catalogoPorTipo } from "@/lib/catalogoCuentas";
@@ -129,6 +130,7 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen px-4 py-8 sac-escritorio">
       <div className="max-w-4xl mx-auto space-y-5">
+        <AvisoLicencia />
         <div className="sac-ventana p-0" style={{ paddingTop: 0 }}>
           <div
             className="px-3 py-1.5 text-xs font-semibold flex items-center justify-between"
