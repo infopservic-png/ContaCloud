@@ -99,6 +99,8 @@ const GRUPOS = [
     items: [
       { href: "empleados", label: "Empleados" },
       { href: "planillas", label: "Planillas" },
+      { href: "anexo-f14", label: "Anexo F14" },
+      { href: "anexo-q25", label: "Anexo Q25" },
       { href: "rrhh-config", label: "Configuración" },
     ],
   },
