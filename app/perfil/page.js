@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { usePerfil } from "@/lib/PerfilContext";
 import { COLORES_ORIGINALES, normalizarHex, variablesTema, avisoColorPrimario } from "@/lib/colores";
+import MiLicencia from "@/components/MiLicencia";
 import { reducirLogo, TIPOS_LOGO } from "@/lib/logo";
 
 const inputCls = "w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm";
@@ -128,6 +129,8 @@ export default function PerfilPage() {
       <p className="text-inkSoft text-sm mb-8">{usuario.email}</p>
 
       <form onSubmit={guardar} className="space-y-8">
+        <MiLicencia />
+
         <section className="bg-[#F7F4EA] border border-paperLine rounded-sm p-6 space-y-5">
           <h2 className="font-display text-base font-semibold">Mi marca</h2>
           <div>
