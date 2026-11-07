@@ -39,6 +39,34 @@ export default function CuentasPage() {
     exportarAExcel("catalogo-de-cuentas", [{ nombre: "Catálogo de Cuentas", filas }]);
   }
 
+  function descargarPlantilla() {
+    exportarAExcel("plantilla-catalogo-de-cuentas", [
+      {
+        nombre: "Catálogo",
+        filas: [
+          ["Código", "Nombre", "Clase", "Saldo normal"],
+          ["110101", "Caja General", "Activo", "deudor"],
+          ["210101", "Proveedores", "Pasivo", "acreedor"],
+          ["310101", "Capital Social", "Capital", "acreedor"],
+          ["410101", "Ventas", "Ingreso", "acreedor"],
+          ["510101", "Costo de Ventas", "Costo", "deudor"],
+          ["610101", "Gastos de Administración", "Gasto", "deudor"],
+        ],
+      },
+      {
+        nombre: "Instrucciones",
+        filas: [
+          ["Una cuenta por fila, empezando en la fila 2 de la hoja «Catálogo». Borra las filas de ejemplo."],
+          ["Código: único por cuenta (texto o número)."],
+          ["Nombre: nombre de la cuenta."],
+          ["Clase: Activo, Pasivo, Capital, Ingreso, Costo o Gasto."],
+          ["Saldo normal: deudor (Activo, Costo, Gasto) o acreedor (Pasivo, Capital, Ingreso)."],
+          ["Se importa solo la primera hoja; los códigos que ya existan se omiten."],
+        ],
+      },
+    ]);
+  }
+
   function normalizarClase(valor) {
     const v = String(valor || "").trim().toLowerCase();
     return CLASES.find((cl) => cl.toLowerCase() === v) || null;
@@ -212,6 +240,9 @@ export default function CuentasPage() {
               Exportar a Excel
             </button>
           )}
+          <button onClick={descargarPlantilla} className="text-xs text-ledgerDark hover:underline">
+            Descargar plantilla
+          </button>
           <label className="text-xs text-accentDark hover:underline cursor-pointer">
             {importandoArchivo ? "Importando…" : "Importar desde Excel"}
             <input

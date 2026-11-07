@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [nombre, setNombre] = useState("");
   const [tipo, setTipo] = useState("servicio");
   const [modoContable, setModoContable] = useState("documento");
+  const [catalogoPropio, setCatalogoPropio] = useState(false);
   const [creando, setCreando] = useState(false);
   const [error, setError] = useState(null);
   const [admin, setAdmin] = useState(false);
@@ -72,22 +73,25 @@ export default function Dashboard() {
       return;
     }
 
-    const cuentasIniciales = catalogoPorTipo(tipo).map((c) => ({
-      ...c,
-      empresa_id: empresa.id,
-    }));
+    // Con catálogo propio la empresa nace sin cuentas: el usuario lo importa desde Excel
+    if (!catalogoPropio) {
+      const cuentasIniciales = catalogoPorTipo(tipo).map((c) => ({
+        ...c,
+        empresa_id: empresa.id,
+      }));
 
-    const { error: errCuentas } = await supabase
-      .from("cuentas")
-      .insert(cuentasIniciales);
+      const { error: errCuentas } = await supabase
+        .from("cuentas")
+        .insert(cuentasIniciales);
 
-    if (errCuentas) {
-      setError("Empresa creada, pero falló el catálogo de cuentas: " + errCuentas.message);
+      if (errCuentas) {
+        setError("Empresa creada, pero falló el catálogo de cuentas: " + errCuentas.message);
+      }
     }
 
     setNombre("");
     setCreando(false);
-    router.push(`/empresa/${empresa.id}/transacciones`);
+    router.push(`/empresa/${empresa.id}/${catalogoPropio ? "cuentas" : "transacciones"}`);
   }
 
   async function cerrarSesion() {
@@ -237,6 +241,20 @@ export default function Dashboard() {
                   </label>
                 ))}
               </div>
+            </fieldset>
+
+            <fieldset className="sac-grupo">
+              <legend>Catálogo de cuentas</legend>
+              <label className="flex gap-2 items-start cursor-pointer">
+                <input type="checkbox" checked={catalogoPropio} onChange={(e) => setCatalogoPropio(e.target.checked)} className="mt-1" />
+                <span>
+                  <span className="block text-sm font-medium">Empezar con mi propio catálogo</span>
+                  <span className="block text-xs text-inkSoft">
+                    La empresa se crea sin cuentas y te llevamos a Cuentas para que lo importes desde Excel
+                    (hay una plantilla para descargar). Si no lo marcas, se carga el catálogo base.
+                  </span>
+                </span>
+              </label>
             </fieldset>
 
             <fieldset className="sac-grupo">
