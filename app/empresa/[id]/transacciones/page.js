@@ -14,13 +14,13 @@ function lineaVacia() {
   return { cuenta_id: "", debe: "", haber: "" };
 }
 
-function formularioVacio() {
+function formularioVacio(empresa) {
   return {
     fecha: new Date().toISOString().slice(0, 10),
     tipo: "diario",
     descripcion: "",
-    elaborado_por: "",
-    revisado_por: "",
+    elaborado_por: empresa?.firma_elaborado || "",
+    revisado_por: empresa?.firma_revisado || "",
     lineas: [lineaVacia(), lineaVacia()],
   };
 }
@@ -29,7 +29,7 @@ export default function TransaccionesPage() {
   const { cuentas, empresaId, empresa, periodo } = useEmpresa();
   const [vista, setVista] = useState("partida"); // "partida" (reporte) | "tabla"
 
-  const [form, setForm] = useState(formularioVacio());
+  const [form, setForm] = useState(() => formularioVacio(empresa));
   const [editandoId, setEditandoId] = useState(null);
   const [error, setError] = useState(null);
   const [guardando, setGuardando] = useState(false);
@@ -187,7 +187,7 @@ export default function TransaccionesPage() {
 
   function cancelarEdicion() {
     setEditandoId(null);
-    setForm(formularioVacio());
+    setForm(formularioVacio(empresa));
     setError(null);
   }
 
@@ -313,7 +313,7 @@ export default function TransaccionesPage() {
       return;
     }
 
-    setForm(formularioVacio());
+    setForm(formularioVacio(empresa));
     setGuardando(false);
     cargarPartidas();
   }

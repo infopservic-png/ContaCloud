@@ -67,7 +67,7 @@ export default function PartidaContable({ partida, empresa, acciones = null }) {
       <p className="ml-4 uppercase">{partida.descripcion}</p>
 
       <div className="mt-10 grid grid-cols-3 gap-6 text-center text-[11px]">
-        {[["Elaborado por", partida.elaborado_por], ["Revisado por", partida.revisado_por], ["Autorizado por", ""]].map(([t, n]) => (
+        {[["Elaborado por", partida.elaborado_por || empresa?.firma_elaborado], ["Revisado por", partida.revisado_por || empresa?.firma_revisado], ["Autorizado por", empresa?.firma_autorizado]].map(([t, n]) => (
           <div key={t}>
             <div className="border-t border-black pt-1">{n || " "}</div>
             <div>{t}</div>

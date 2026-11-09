@@ -127,6 +127,7 @@ const GRUPOS = [
     id: "administrador",
     label: "Administrador",
     items: [
+      { href: "configuracion", label: "Configuración" },
       { href: "usuarios", label: "Usuarios y accesos" },
       { href: "periodos", label: "Períodos y cierre" },
       { href: "bitacora", label: "Bitácora de acciones" },
