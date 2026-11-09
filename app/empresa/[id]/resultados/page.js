@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useEmpresa } from "@/lib/EmpresaContext";
+import { corteDefecto } from "@/lib/periodos";
 import {
   obtenerCuentasConMovimientos,
   filtrarMovimientosRango,
@@ -12,16 +13,18 @@ import { EncabezadoRango, FirmasEstadosFinancieros } from "@/lib/EncabezadoRepor
 import { exportarAExcel } from "@/lib/exportarExcel";
 
 export default function ResultadosPage() {
-  const { empresa, empresaId } = useEmpresa();
+  const { empresa, empresaId, periodo } = useEmpresa();
   const [cargando, setCargando] = useState(true);
   const [cuentasBase, setCuentasBase] = useState([]);
-  const [fechaInicio, setFechaInicio] = useState("");
-  const [fechaFin, setFechaFin] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fechaInicio, setFechaInicio] = useState(() => periodo?.fecha_inicio || "");
+  const [fechaFin, setFechaFin] = useState(() => corteDefecto(periodo));
 
   useEffect(() => {
     let activo = true;
     setCargando(true);
-    obtenerCuentasConMovimientos(empresaId).then((cuentas) => {
+    setFechaInicio(periodo?.fecha_inicio || "");
+    setFechaFin(corteDefecto(periodo));
+    obtenerCuentasConMovimientos(empresaId, { periodo, excluirCierre: true }).then((cuentas) => {
       if (!activo) return;
       setCuentasBase(cuentas);
       setCargando(false);
@@ -29,7 +32,7 @@ export default function ResultadosPage() {
     return () => {
       activo = false;
     };
-  }, [empresaId]);
+  }, [empresaId, periodo?.id]);
 
   if (cargando) {
     return <p className="text-inkSoft text-sm">Calculando…</p>;

@@ -30,7 +30,7 @@ function textoPeriodo(desde, hasta) {
 }
 
 export default function MayorPage() {
-  const { cuentas, empresaId, empresa } = useEmpresa();
+  const { cuentas, empresaId, empresa, periodo: periodoCtx } = useEmpresa();
   const [datos, setDatos] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [cuentaId, setCuentaId] = useState("todas");
@@ -41,7 +41,7 @@ export default function MayorPage() {
   useEffect(() => {
     let activo = true;
     setCargando(true);
-    obtenerCuentasConMovimientos(empresaId).then((data) => {
+    obtenerCuentasConMovimientos(empresaId, { periodo: periodoCtx }).then((data) => {
       if (activo) {
         setDatos(data);
         setCargando(false);
@@ -50,7 +50,7 @@ export default function MayorPage() {
     return () => {
       activo = false;
     };
-  }, [empresaId]);
+  }, [empresaId, periodoCtx?.id]);
 
   const modoAgrupado = cuentaId === "todas";
 

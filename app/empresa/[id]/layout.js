@@ -7,6 +7,7 @@ import Link from "next/link";
 import { supabase, establecerRolEmpresa } from "@/lib/supabaseClient";
 import { EmpresaContext } from "@/lib/EmpresaContext";
 import Marca from "@/components/Marca";
+import { obtenerPeriodos, crearPeriodo, periodoPorDefecto } from "@/lib/periodos";
 
 // Íconos de línea simples (24x24, stroke="currentColor") para los grupos
 // principales del menú. Un solo componente genérico leyendo un "path" por id
@@ -68,6 +69,7 @@ const GRUPOS = [
       { href: "resultados", label: "Estado de resultados" },
       { href: "balance-general", label: "Balance general" },
       { href: "kardex", label: "Kardex" },
+      { href: "periodos", label: "Períodos y cierre" },
       { href: "bitacora", label: "Bitácora de acciones" },
       { href: "usuarios", label: "Usuarios y accesos" },
       { href: "respaldo", label: "Copia de seguridad" },
@@ -134,6 +136,8 @@ export default function EmpresaLayout({ children }) {
   const [cuentas, setCuentas] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [rol, setRol] = useState(null);
+  const [periodos, setPeriodos] = useState([]);
+  const [periodoId, setPeriodoId] = useState(null);
   const [errorCarga, setErrorCarga] = useState(null);
   const [usuarioId, setUsuarioId] = useState(null);
   const [grupoElegido, setGrupoElegido] = useState(null);
@@ -161,6 +165,35 @@ export default function EmpresaLayout({ children }) {
         .single();
       if (!error && data) setEmpresa(data);
       return { data, error };
+    },
+    [empresaId]
+  );
+
+  const recargarPeriodos = useCallback(
+    async (preferido) => {
+      try {
+        const lista = await obtenerPeriodos(empresaId);
+        setPeriodos(lista);
+        let elegido = preferido || null;
+        if (!elegido) {
+          try { elegido = localStorage.getItem(`periodo_${empresaId}`); } catch {}
+        }
+        const sel = lista.find((p) => p.id === elegido) || periodoPorDefecto(lista);
+        setPeriodoId(sel?.id || null);
+        return lista;
+      } catch {
+        setPeriodos([]); // la migración 36 aún no se ejecutó: sin períodos, los reportes no se limitan
+        setPeriodoId(null);
+        return [];
+      }
+    },
+    [empresaId]
+  );
+
+  const seleccionarPeriodo = useCallback(
+    (id) => {
+      setPeriodoId(id);
+      try { localStorage.setItem(`periodo_${empresaId}`, id); } catch {}
     },
     [empresaId]
   );
@@ -221,6 +254,14 @@ export default function EmpresaLayout({ children }) {
         }
       } catch {}
 
+      // Períodos contables: si la empresa aún no tiene, se crea el del año actual
+      let lista = await recargarPeriodos();
+      if (lista.length === 0 && (emp.user_id === sesion.session.user.id || rolMiembro === "completo")) {
+        const anio = new Date().getFullYear();
+        const r = await crearPeriodo(empresaId, { nombre: String(anio), inicio: `${anio}-01-01`, fin: `${anio}-12-31` });
+        if (r.periodo) await recargarPeriodos(r.periodo.id);
+      }
+
       const { data: cts, error: errCuentas } = await supabase
         .from("cuentas")
         .select("*")
@@ -254,7 +295,7 @@ export default function EmpresaLayout({ children }) {
 
   return (
     <EmpresaContext.Provider
-      value={{ empresa, cuentas, empresaId, recargarCuentas, actualizarEmpresa }}
+      value={{ empresa, cuentas, empresaId, recargarCuentas, actualizarEmpresa, periodo: periodos.find((p) => p.id === periodoId) || null, periodos, seleccionarPeriodo, recargarPeriodos }}
     >
       <main className="min-h-screen px-6 py-8 max-w-5xl mx-auto">
         {rol && (
@@ -270,6 +311,11 @@ export default function EmpresaLayout({ children }) {
           </div>
         )}
         {!rol && <AvisoLicencia />}
+        {periodos.find((p) => p.id === periodoId)?.estado === "cerrado" && (
+          <div className="no-print mb-4 bg-rust/10 border border-rust/40 text-rust rounded-sm px-4 py-2 text-sm">
+            El período {periodos.find((p) => p.id === periodoId)?.nombre} está cerrado: solo puedes consultarlo. Para corregir algo, reábrelo en «Períodos y cierre».
+          </div>
+        )}
         <header className="flex items-center justify-between mb-6 no-print">
           <div>
             <Link
@@ -292,6 +338,20 @@ export default function EmpresaLayout({ children }) {
             </span>
           </div>
           <div className="text-right">
+            {periodos.length > 0 && (
+              <label className="text-xs text-inkSoft flex items-center justify-end gap-1.5 mb-1">
+                Período
+                <select
+                  value={periodoId || ""}
+                  onChange={(e) => seleccionarPeriodo(e.target.value)}
+                  className="border border-paperLine rounded-sm px-1.5 py-0.5 bg-white text-ink text-xs"
+                >
+                  {periodos.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nombre}{p.estado === "cerrado" ? " (cerrado)" : ""}</option>
+                  ))}
+                </select>
+              </label>
+            )}
             <div className="font-display text-sm font-semibold text-inkSoft">
               <Marca tamano="sm" />
             </div>

@@ -8,7 +8,7 @@ import CuentaCombobox from "@/lib/CuentaCombobox";
 import { exportarAExcel } from "@/lib/exportarExcel";
 import PartidaContable from "@/components/PartidaContable";
 import RespaldosPartidasPdf from "@/components/RespaldosPartidasPdf";
-import { TIPOS_PARTIDA, etiquetaPartida, compararPartidas, siguienteNumeroPartida, tipoPartida } from "@/lib/partidas";
+import { TIPOS_PARTIDA, TODOS_TIPOS, etiquetaPartida, compararPartidas, siguienteNumeroPartida, tipoPartida } from "@/lib/partidas";
 
 function lineaVacia() {
   return { cuenta_id: "", debe: "", haber: "" };
@@ -26,7 +26,7 @@ function formularioVacio() {
 }
 
 export default function TransaccionesPage() {
-  const { cuentas, empresaId, empresa } = useEmpresa();
+  const { cuentas, empresaId, empresa, periodo } = useEmpresa();
   const [vista, setVista] = useState("partida"); // "partida" (reporte) | "tabla"
 
   const [form, setForm] = useState(formularioVacio());
@@ -45,7 +45,7 @@ export default function TransaccionesPage() {
     if (orden === "fecha") {
       copia.sort(compararPartidas);
     } else {
-      const ordenTipo = (x) => TIPOS_PARTIDA.findIndex((t) => t.id === (x.tipo || "diario"));
+      const ordenTipo = (x) => TODOS_TIPOS.findIndex((t) => t.id === (x.tipo || "diario"));
       copia.sort((a, b) => ordenTipo(a) - ordenTipo(b) || a.numero_partida - b.numero_partida);
     }
     return copia;
@@ -55,13 +55,20 @@ export default function TransaccionesPage() {
   async function renumerarPorFecha() {
     const cambios = [];
     let total = 0;
+    // La numeración es continua entre períodos: dentro del período elegido se renumera a partir del último número de los anteriores
+    const base = {};
+    if (periodo) {
+      const { data: previas } = await supabase.from("transacciones").select("tipo, numero_partida").eq("empresa_id", empresaId).lt("fecha", periodo.fecha_inicio);
+      for (const r of previas || []) base[r.tipo || "diario"] = Math.max(base[r.tipo || "diario"] || 0, r.numero_partida);
+    }
     for (const t of TIPOS_PARTIDA) {
       const delTipo = partidas
         .filter((p) => (p.tipo || "diario") === t.id)
         .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)) || a.numero_partida - b.numero_partida);
       total += delTipo.length;
       delTipo.forEach((p, i) => {
-        if (p.numero_partida !== i + 1) cambios.push({ id: p.id, de: p.numero_partida, a: i + 1 });
+        const nuevo = i + 1 + (base[t.id] || 0);
+        if (p.numero_partida !== nuevo) cambios.push({ id: p.id, de: p.numero_partida, a: nuevo });
       });
     }
     if (cambios.length === 0) {
@@ -96,7 +103,7 @@ export default function TransaccionesPage() {
   async function cargarPartidas() {
     setCargandoPartidas(true);
     try {
-      const data = await obtenerPartidas(empresaId);
+      const data = await obtenerPartidas(empresaId, periodo);
       setPartidas(data);
     } finally {
       setCargandoPartidas(false);
@@ -106,7 +113,7 @@ export default function TransaccionesPage() {
   useEffect(() => {
     cargarPartidas();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [empresaId]);
+  }, [empresaId, periodo?.id]);
 
   const totalDebe = useMemo(
     () => form.lineas.reduce((a, l) => a + (Number(l.debe) || 0), 0),
@@ -540,7 +547,7 @@ export default function TransaccionesPage() {
               className="border border-paperLine rounded-sm px-2 py-1 bg-white text-ink"
             >
               <option value="todos">Todos</option>
-              {TIPOS_PARTIDA.map((t) => (
+              {TODOS_TIPOS.map((t) => (
                 <option key={t.id} value={t.id}>{t.label}</option>
               ))}
             </select>

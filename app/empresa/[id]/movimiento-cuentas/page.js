@@ -29,7 +29,7 @@ function enRango(codigo, cDesde, cHasta) {
 }
 
 export default function MovimientoCuentasPage() {
-  const { empresaId, empresa, cuentas } = useEmpresa();
+  const { empresaId, empresa, cuentas, periodo: periodoCtx } = useEmpresa();
   const [datos, setDatos] = useState([]);
   const [cargando, setCargando] = useState(true);
   // Cuentas elegidas del catálogo (id); el rango se calcula con sus códigos.
@@ -45,7 +45,7 @@ export default function MovimientoCuentasPage() {
   useEffect(() => {
     let activo = true;
     setCargando(true);
-    obtenerCuentasConMovimientos(empresaId).then((data) => {
+    obtenerCuentasConMovimientos(empresaId, { periodo: periodoCtx }).then((data) => {
       if (activo) {
         setDatos(data);
         setCargando(false);
@@ -54,7 +54,7 @@ export default function MovimientoCuentasPage() {
     return () => {
       activo = false;
     };
-  }, [empresaId]);
+  }, [empresaId, periodoCtx?.id]);
 
   const cuentasRep = useMemo(() => {
     const cd = cDesde.trim();
