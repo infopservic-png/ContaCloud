@@ -14,6 +14,7 @@ import { formatoMoneda } from "@/lib/contabilidad";
 import { TIPOS_DTE, TIPO_DOCUMENTO_VENTA } from "@/lib/dte";
 import { emitirDte, eliminarDte } from "@/lib/dteEmision";
 import EmitirFse from "@/components/EmitirFse";
+import FormDevolucion from "@/components/FormDevolucion";
 
 const hoy = () => new Date().toISOString().slice(0, 10);
 const receptorVacio = () => ({
@@ -248,7 +249,7 @@ export default function FacturacionPage() {
       )}
 
       <div className="flex gap-2 text-sm">
-        {[["venta", "Factura / Crédito fiscal (venta)"], ["fse", "Factura de sujeto excluido (14 — compra)"]].map(([v, t]) => (
+        {[["venta", "Factura / Crédito fiscal (venta)"], ["fse", "Factura de sujeto excluido (14 — compra)"], ["nc", "Nota de crédito (05 — devolución o ajuste)"]].map(([v, t]) => (
           <button key={v} type="button" onClick={() => setModo(v)}
             className={"px-3 py-1.5 rounded-sm border " + (modo === v ? "bg-brand text-onBrand border-brand" : "border-paperLine bg-white hover:bg-paper")}>
             {t}
@@ -257,8 +258,9 @@ export default function FacturacionPage() {
       </div>
 
       {modo === "fse" && <EmitirFse onEmitido={cargar} />}
+      {modo === "nc" && <FormDevolucion tipoFijo="venta" electronica onHecho={cargar} />}
 
-      <section className={"bg-[#F7F4EA] border border-paperLine rounded-sm p-6 " + (modo === "fse" ? "hidden" : "")}>
+      <section className={"bg-[#F7F4EA] border border-paperLine rounded-sm p-6 " + (modo !== "venta" ? "hidden" : "")}>
         <h2 className="font-display text-base font-semibold mb-1">Emitir documento</h2>
         <p className="text-xs text-inkSoft mb-4">
           Al emitir se registra una venta completa: partida con costo de venta, salida del Kardex y,

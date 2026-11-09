@@ -18,6 +18,7 @@ import {
 import { recalcularKardexProductos } from "@/lib/ventasCompras";
 import { formatoMoneda } from "@/lib/contabilidad";
 import CuentaCombobox from "@/lib/CuentaCombobox";
+import PanelDevoluciones from "@/components/PanelDevoluciones";
 import { exportarAExcel } from "@/lib/exportarExcel";
 
 function nuevoProductoVacio() {
@@ -495,6 +496,8 @@ export default function KardexPage() {
         {avisoMetodo?.error && <p className="w-full text-sm text-rust">{avisoMetodo.error}</p>}
         {avisoMetodo?.ok && <p className="w-full text-sm text-ledger">{avisoMetodo.ok}</p>}
       </div>
+
+      <PanelDevoluciones onCambio={() => { cargarProductos(); if (productoId) cargarMovimientos(productoId); }} />
 
       <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-6">
         {/* Lista de productos */}
