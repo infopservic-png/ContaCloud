@@ -4,7 +4,7 @@ import AvisoLicencia from "@/components/AvisoLicencia";
 import { useEffect, useState, useCallback } from "react";
 import { useRouter, usePathname, useParams } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { supabase, establecerRolEmpresa } from "@/lib/supabaseClient";
 import { EmpresaContext } from "@/lib/EmpresaContext";
 import Marca from "@/components/Marca";
 
@@ -68,6 +68,9 @@ const GRUPOS = [
       { href: "resultados", label: "Estado de resultados" },
       { href: "balance-general", label: "Balance general" },
       { href: "kardex", label: "Kardex" },
+      { href: "bitacora", label: "Bitácora de acciones" },
+      { href: "usuarios", label: "Usuarios y accesos" },
+      { href: "respaldo", label: "Copia de seguridad" },
     ],
   },
   {
@@ -130,6 +133,7 @@ export default function EmpresaLayout({ children }) {
   const [empresa, setEmpresa] = useState(null);
   const [cuentas, setCuentas] = useState([]);
   const [cargando, setCargando] = useState(true);
+  const [rol, setRol] = useState(null);
   const [errorCarga, setErrorCarga] = useState(null);
   const [usuarioId, setUsuarioId] = useState(null);
   const [grupoElegido, setGrupoElegido] = useState(null);
@@ -192,6 +196,31 @@ export default function EmpresaLayout({ children }) {
 
       setEmpresa(emp);
 
+      // Rol en esta empresa: dueño (null) o invitado (lector / digitador / completo)
+      let rolMiembro = null;
+      const emailUsuario = (sesion.session.user.email || "").toLowerCase();
+      if (emp.user_id !== sesion.session.user.id) {
+        const { data: m } = await supabase
+          .from("empresa_miembros")
+          .select("rol")
+          .eq("empresa_id", empresaId)
+          .eq("email", emailUsuario)
+          .maybeSingle();
+        rolMiembro = m?.rol || null;
+      }
+      establecerRolEmpresa(rolMiembro);
+      setRol(rolMiembro);
+
+      // Reporte de accesos: una anotación por sesión del navegador y empresa cada 2 horas
+      try {
+        const clave = `acceso_${empresaId}`;
+        const ultimo = Number(sessionStorage.getItem(clave) || 0);
+        if (Date.now() - ultimo > 2 * 3600 * 1000) {
+          sessionStorage.setItem(clave, String(Date.now()));
+          supabase.from("accesos_empresa").insert({ empresa_id: empresaId, user_id: sesion.session.user.id, email: sesion.session.user.email }).then(() => {});
+        }
+      } catch {}
+
       const { data: cts, error: errCuentas } = await supabase
         .from("cuentas")
         .select("*")
@@ -211,6 +240,7 @@ export default function EmpresaLayout({ children }) {
     cargar();
     return () => {
       activo = false;
+      establecerRolEmpresa(null);
     };
   }, [empresaId, router]);
 
@@ -227,13 +257,19 @@ export default function EmpresaLayout({ children }) {
       value={{ empresa, cuentas, empresaId, recargarCuentas, actualizarEmpresa }}
     >
       <main className="min-h-screen px-6 py-8 max-w-5xl mx-auto">
-        {usuarioId && empresa?.user_id && usuarioId !== empresa.user_id && (
+        {rol && (
+          <div className="no-print mb-6 bg-accent/10 border border-accent/40 rounded-sm px-4 py-2 text-sm">
+            Empresa compartida por {empresa.propietario_email || "su propietario"} — tu acceso:{" "}
+            <strong>{rol === "lector" ? "solo lectura" : rol === "digitador" ? "consultar y digitar (sin eliminar)" : "completo"}</strong>.
+          </div>
+        )}
+        {!rol && usuarioId && empresa?.user_id && usuarioId !== empresa.user_id && (
           <div className="no-print mb-6 bg-accent/10 border border-accent/40 rounded-sm px-4 py-2 text-sm">
             Estás viendo esta empresa en modo administrador (solo lectura) —
             pertenece a {empresa.propietario_email || "otro usuario"}.
           </div>
         )}
-        <AvisoLicencia />
+        {!rol && <AvisoLicencia />}
         <header className="flex items-center justify-between mb-6 no-print">
           <div>
             <Link

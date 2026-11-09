@@ -6,6 +6,7 @@ import Link from "next/link";
 import AvisoLicencia from "@/components/AvisoLicencia";
 import Marca from "@/components/Marca";
 import { supabase } from "@/lib/supabaseClient";
+import { RestaurarRespaldo } from "@/components/RespaldoEmpresa";
 import { catalogoPorTipo } from "@/lib/catalogoCuentas";
 
 export default function Dashboard() {
@@ -38,12 +39,24 @@ export default function Dashboard() {
 
   async function cargarEmpresas(userId) {
     setCargando(true);
+    const { data: sesion } = await supabase.auth.getSession();
+    const email = (sesion?.session?.user?.email || "").toLowerCase();
     const { data, error } = await supabase
       .from("empresas")
       .select("*")
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
-    if (!error) setEmpresas(data);
+    let lista = error ? [] : data || [];
+    // Empresas que otros usuarios compartieron conmigo
+    if (email) {
+      const { data: inv } = await supabase.from("empresa_miembros").select("empresa_id, rol").eq("email", email);
+      if (inv?.length) {
+        const { data: comp } = await supabase.from("empresas").select("*").in("id", inv.map((x) => x.empresa_id));
+        const roles = Object.fromEntries(inv.map((x) => [x.empresa_id, x.rol]));
+        lista = [...lista, ...(comp || []).filter((c) => c.user_id !== userId).map((c) => ({ ...c, _rol: roles[c.id] }))];
+      }
+    }
+    if (!error) setEmpresas(lista);
     setCargando(false);
   }
 
@@ -183,7 +196,7 @@ export default function Dashboard() {
                     className={`cursor-pointer hover:bg-[#DCE6F4] ${i % 2 ? "bg-[#F4F2EC]" : "bg-white"}`}
                   >
                     <td className="px-3 py-1.5 border border-[#d3d0c6] text-center text-xs">{i + 1}</td>
-                    <td className="px-3 py-1.5 border border-[#d3d0c6] font-medium">{emp.nombre}</td>
+                    <td className="px-3 py-1.5 border border-[#d3d0c6] font-medium">{emp.nombre}{emp._rol && <span className="ml-2 text-[10px] font-normal text-inkSoft border border-[#d3d0c6] rounded-sm px-1">compartida · {emp._rol === "lector" ? "lectura" : emp._rol === "digitador" ? "digitador" : "completo"}</span>}</td>
                     <td className="px-3 py-1.5 border border-[#d3d0c6] text-xs">
                       {emp.tipo === "comercial" ? "Comercial" : "Servicio"}
                     </td>
@@ -192,15 +205,21 @@ export default function Dashboard() {
                       <button onClick={() => router.push(`/empresa/${emp.id}/transacciones`)} className="sac-btn sac-btn-primario !py-0.5 !px-3 text-xs">
                         Abrir
                       </button>{" "}
-                      <button onClick={() => eliminarEmpresa(emp)} className="sac-btn !py-0.5 !px-3 text-xs text-rust">
-                        Eliminar
-                      </button>
+                      {!emp._rol && (
+                        <button onClick={() => eliminarEmpresa(emp)} className="sac-btn !py-0.5 !px-3 text-xs text-rust">
+                          Eliminar
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
             <p className="text-[11px] text-inkSoft mt-1.5">Doble clic sobre una empresa para abrirla.</p>
+            <details className="mt-4 text-sm">
+              <summary className="cursor-pointer text-accentDark">Restaurar una copia de seguridad</summary>
+              <div className="mt-2"><RestaurarRespaldo onHecho={() => cargarEmpresas(usuario.id)} /></div>
+            </details>
           </div>
 
           <div className="px-3 py-1 text-[11px] text-inkSoft border-t border-[#a9a496] bg-[#E2DFD6]">
