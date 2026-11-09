@@ -28,6 +28,9 @@ const ICONO_PATHS = {
   // Persona con tarjeta (Recursos humanos)
   rrhh:
     "M12 11a3.2 3.2 0 100-6.4 3.2 3.2 0 000 6.4zM5.5 20c.4-3.3 3.2-5.4 6.5-5.4s6.1 2.1 6.5 5.4M3 3h18v18H3z",
+  // Engranaje (Administrador)
+  administrador:
+    "M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.9.3h0a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5h0a1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.9v0a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z",
   // Dos personas (Socios de negocios)
   socios:
     "M9 11a3 3 0 100-6 3 3 0 000 6zM3 20c0-3 2.7-5 6-5s6 2 6 5M17.5 11a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM15 20c.3-2.3 2.3-4 4.5-4s4.2 1.7 4.5 4",
@@ -69,10 +72,6 @@ const GRUPOS = [
       { href: "resultados", label: "Estado de resultados" },
       { href: "balance-general", label: "Balance general" },
       { href: "kardex", label: "Kardex" },
-      { href: "periodos", label: "Períodos y cierre" },
-      { href: "bitacora", label: "Bitácora de acciones" },
-      { href: "usuarios", label: "Usuarios y accesos" },
-      { href: "respaldo", label: "Copia de seguridad" },
     ],
   },
   {
@@ -122,6 +121,16 @@ const GRUPOS = [
       { href: "cxc", label: "Cuentas por cobrar" },
       { href: "proveedores", label: "Proveedores" },
       { href: "cxp", label: "Cuentas por pagar" },
+    ],
+  },
+  {
+    id: "administrador",
+    label: "Administrador",
+    items: [
+      { href: "usuarios", label: "Usuarios y accesos" },
+      { href: "periodos", label: "Períodos y cierre" },
+      { href: "bitacora", label: "Bitácora de acciones" },
+      { href: "respaldo", label: "Copia de seguridad" },
     ],
   },
 ];
