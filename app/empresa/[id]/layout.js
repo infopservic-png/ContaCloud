@@ -71,6 +71,8 @@ const GRUPOS = [
       { href: "balance", label: "Balance de comprobación" },
       { href: "resultados", label: "Estado de resultados" },
       { href: "balance-general", label: "Balance general" },
+      { href: "flujo-efectivo", label: "Flujo de efectivo" },
+      { href: "cambios-patrimonio", label: "Cambios en el patrimonio" },
       { href: "kardex", label: "Kardex" },
     ],
   },
