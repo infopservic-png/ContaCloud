@@ -46,7 +46,7 @@ export default function CambiosPatrimonioPage() {
   if (cargando) return <p className="text-inkSoft text-sm">Calculando…</p>;
 
   const d = calcularCambiosPatrimonio(cuentas, fechaInicio, fechaFin);
-  const sinDatos = d.columnas.length === 0;
+  const sinDatos = false;
   const anio = (fechaFin || "").slice(0, 4);
   const filasVis = d.filas.filter((f) => f.fuerte || f.etiqueta === "Resultado del ejercicio" || Math.abs(f.total) >= 0.005);
   const etiqueta = (f) =>
