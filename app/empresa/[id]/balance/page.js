@@ -11,12 +11,14 @@ import {
 } from "@/lib/contabilidad";
 import { EncabezadoAlFecha, FirmasEstadosFinancieros } from "@/lib/EncabezadoReporte";
 import { exportarAExcel } from "@/lib/exportarExcel";
+import BalanceSac from "@/components/BalanceSac";
 
 export default function BalancePage() {
   const { empresa, empresaId, periodo } = useEmpresa();
   const [cargando, setCargando] = useState(true);
   const [cuentasBase, setCuentasBase] = useState([]);
   const [fechaCorte, setFechaCorte] = useState(() => corteDefecto(periodo));
+  const [formato, setFormato] = useState("jerarquico"); // "jerarquico" | "clasico"
 
   useEffect(() => {
     let activo = true;
@@ -65,8 +67,29 @@ export default function BalancePage() {
     ]);
   }
 
+  const selectorFormato = (
+    <label className="no-print text-xs text-inkSoft flex items-center gap-1.5 mb-3">
+      Formato
+      <select value={formato} onChange={(e) => setFormato(e.target.value)} className="border border-paperLine rounded-sm px-1.5 py-0.5 bg-white text-ink text-xs">
+        <option value="jerarquico">Con saldo anterior, cargos y abonos</option>
+        <option value="clasico">Clásico (saldos deudor y acreedor)</option>
+      </select>
+    </label>
+  );
+
+  if (formato === "jerarquico") {
+    return (
+      <div>
+        <h2 className="font-display text-lg font-semibold mb-2 no-print">Balance de Comprobación</h2>
+        {selectorFormato}
+        <BalanceSac cuentasBase={cuentasBase} empresa={empresa} periodo={periodo} />
+      </div>
+    );
+  }
+
   return (
     <div>
+      {selectorFormato}
       <div className="flex items-center justify-between mb-4">
         <div>
           <h2 className="font-display text-lg font-semibold">Balance de Comprobación</h2>
