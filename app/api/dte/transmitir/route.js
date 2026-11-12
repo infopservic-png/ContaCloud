@@ -42,6 +42,7 @@ export async function POST(request) {
     // El DTE que se firma no lleva los campos que agrega Hacienda (firma y sello)
     const dte = JSON.parse(JSON.stringify(doc.json_dte || {}));
     delete dte.firma;
+    delete dte.firmaElectronica;
     delete dte.selloRecibido;
     dte.identificacion = { ...dte.identificacion, ambiente: cred.ambiente };
     // Si están cargados los esquemas oficiales, se valida antes de enviar (Hacienda rechazaría lo que no cumpla)
@@ -62,7 +63,7 @@ export async function POST(request) {
 
     const respuesta = { estado: r.estado, codigoMsg: r.codigoMsg, descripcionMsg: r.descripcionMsg, observaciones: r.observaciones, http: r.http };
     if (r.aceptado) {
-      const jsonFinal = { ...dte, selloRecibido: r.sello };
+      const jsonFinal = { ...dte, firmaElectronica: jws, selloRecibido: r.sello };
       const { error } = await c.supabase.from("documentos_dte").update({
         estado: "transmitido", sello_recibido: r.sello, fecha_procesamiento: fechaMH(r.fechaProcesamiento),
         respuesta_mh: respuesta, dte_firmado: jws, ambiente: cred.ambiente, json_dte: jsonFinal,
