@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useEmpresa } from "@/lib/EmpresaContext";
+import { usePerfil } from "@/lib/PerfilContext";
 
 const inputCls = "w-full border border-paperLine rounded-sm px-2 py-1.5 text-sm bg-white";
 
@@ -29,6 +30,7 @@ function reducirImagen(archivo) {
 
 export default function FormatoFacturaDte() {
   const { empresa, actualizarEmpresa } = useEmpresa();
+  const perfil = usePerfil()?.perfil;
   const [logo, setLogo] = useState(empresa?.dte_logo || "");
   const [color, setColor] = useState(empresa?.dte_color || "#1F2937");
   const [usarColor, setUsarColor] = useState(!!empresa?.dte_color);
@@ -79,7 +81,7 @@ export default function FormatoFacturaDte() {
         ],
         resumen: { totalGravada: 115, totalIva: 13.23, montoTotalOperacion: 115, condicionOperacion: 1 },
       };
-      const bytes = await generarPdfDte(dte, { formato: formato() });
+      const bytes = await generarPdfDte(dte, { formato: { ...formato(), logo: logo || perfil?.logo || null } });
       window.open(URL.createObjectURL(new Blob([bytes], { type: "application/pdf" })), "_blank");
     } catch (err) {
       setError("No se pudo generar la vista previa: " + (err.message || err));
@@ -103,7 +105,7 @@ export default function FormatoFacturaDte() {
             </div>
           )}
           <input type="file" accept="image/png,image/jpeg" onChange={elegirLogo} className="text-xs" />
-          <span className="block text-[11px] text-inkSoft mt-0.5">PNG o JPG. Se reduce automáticamente.</span>
+          <span className="block text-[11px] text-inkSoft mt-0.5">PNG o JPG. Si no subes uno aquí, se usa el logo de tu Perfil.</span>
         </div>
 
         <div>

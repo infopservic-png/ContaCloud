@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, Fragment } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useEmpresa } from "@/lib/EmpresaContext";
+import { usePerfil } from "@/lib/PerfilContext";
 import DatosEmisor from "@/components/DatosEmisor";
 import SelectorActividad from "@/components/SelectorActividad";
 import SelectorUbicacion from "@/components/SelectorUbicacion";
@@ -34,6 +35,7 @@ const labelCls = "block text-xs font-medium text-inkSoft mb-1";
 
 export default function FacturacionPage() {
   const { empresa, cuentas, empresaId, actualizarEmpresa } = useEmpresa();
+  const perfil = usePerfil()?.perfil;
   const cfg = useMemo(() => configVC("venta"), []);
 
   const [productos, setProductos] = useState([]);
@@ -199,7 +201,7 @@ export default function FacturacionPage() {
     setError(null);
     try {
       const { generarPdfDte, formatoDteEmpresa } = await import("@/lib/dtePdf");
-      const bytes = await generarPdfDte(d.json_dte, { estado: d.estado, formato: formatoDteEmpresa(empresa) });
+      const bytes = await generarPdfDte(d.json_dte, { estado: d.estado, formato: formatoDteEmpresa(empresa, perfil) });
       descargar(new Blob([bytes], { type: "application/pdf" }), `${d.codigo_generacion}.pdf`);
     } catch (e) {
       setError("No se pudo generar el PDF: " + (e.message || e));

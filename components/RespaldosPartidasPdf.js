@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { usePerfil } from "@/lib/PerfilContext";
 
 // Descarga un PDF con las partidas de un rango de fechas; cada partida va
 // seguida del PDF de los DTE (JSON) que la respaldan.
 export default function RespaldosPartidasPdf({ partidas, empresa, empresaId }) {
+  const perfil = usePerfil()?.perfil;
   const hoy = new Date().toISOString().slice(0, 10);
   const [desde, setDesde] = useState(hoy.slice(0, 8) + "01");
   const [hasta, setHasta] = useState(hoy);
@@ -27,6 +29,7 @@ export default function RespaldosPartidasPdf({ partidas, empresa, empresaId }) {
       const { generarPdfPartidasConRespaldos } = await import("@/lib/respaldosPdf");
       const r = await generarPdfPartidasConRespaldos({
         empresa,
+        perfil,
         empresaId,
         partidas: rango,
         alAvanzar: (n, t) => setAvance(`${n} de ${t} partidas`),
