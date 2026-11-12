@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Marca from "@/components/Marca";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -13,11 +13,30 @@ export default function LoginPage() {
   const [clave, setClave] = useState("");
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  const [recordar, setRecordar] = useState(true);
+
+  // Recupera el correo recordado de la última sesión
+  useEffect(() => {
+    try {
+      const c = localStorage.getItem("contacloud_correo");
+      if (c) setCorreo(c);
+      if (localStorage.getItem("contacloud_recordar") === "0") setRecordar(false);
+    } catch {}
+  }, []);
 
   async function manejarEnvio(e) {
     e.preventDefault();
     setMensaje(null);
     setCargando(true);
+    try {
+      if (recordar) {
+        localStorage.setItem("contacloud_correo", correo.trim());
+        localStorage.removeItem("contacloud_recordar");
+      } else {
+        localStorage.removeItem("contacloud_correo");
+        localStorage.setItem("contacloud_recordar", "0");
+      }
+    } catch {}
 
     if (modo === "entrar") {
       const { error } = await supabase.auth.signInWithPassword({
@@ -91,6 +110,8 @@ export default function LoginPage() {
               </label>
               <input
                 type="email"
+                name="email"
+                autoComplete="username"
                 required
                 value={correo}
                 onChange={(e) => setCorreo(e.target.value)}
@@ -104,6 +125,8 @@ export default function LoginPage() {
               </label>
               <input
                 type="password"
+                name="password"
+                autoComplete={modo === "entrar" ? "current-password" : "new-password"}
                 required
                 minLength={6}
                 value={clave}
@@ -111,6 +134,16 @@ export default function LoginPage() {
                 className="w-full border border-paperLine rounded-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Mínimo 6 caracteres"
               />
+              {modo === "entrar" && (
+                <label className="flex items-center gap-2 mt-2 text-xs text-inkSoft select-none">
+                  <input
+                    type="checkbox"
+                    checked={recordar}
+                    onChange={(e) => setRecordar(e.target.checked)}
+                  />
+                  Recordar mi correo en este equipo
+                </label>
+              )}
               {modo === "entrar" && (
                 <div className="text-right mt-1">
                   <Link

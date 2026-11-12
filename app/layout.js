@@ -24,6 +24,12 @@ export const metadata = {
   title: "ContaCloud — Prácticas de contabilidad",
   description:
     "Práctica de contabilidad para empresas comerciales y de servicio: Diario, Mayor y Balance de comprobación.",
+  applicationName: "ContaCloud",
+  appleWebApp: { capable: true, title: "ContaCloud", statusBarStyle: "default" },
+};
+
+export const viewport = {
+  themeColor: "#1F2A3C",
 };
 
 export default function RootLayout({ children }) {
