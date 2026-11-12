@@ -5,6 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { useEmpresa } from "@/lib/EmpresaContext";
 import { usePerfil } from "@/lib/PerfilContext";
+import { transmitirDte, estadoCredenciales, NOMBRE_AMBIENTE } from "@/lib/transmisionDte";
 import DatosEmisor from "@/components/DatosEmisor";
 import SelectorActividad from "@/components/SelectorActividad";
 import SelectorUbicacion from "@/components/SelectorUbicacion";
@@ -36,6 +37,13 @@ const labelCls = "block text-xs font-medium text-inkSoft mb-1";
 export default function FacturacionPage() {
   const { empresa, cuentas, empresaId, actualizarEmpresa } = useEmpresa();
   const perfil = usePerfil()?.perfil;
+  const [transmitiendoId, setTransmitiendoId] = useState(null);
+  const [ambienteTx, setAmbienteTx] = useState(null); // null = sin configurar
+  useEffect(() => {
+    let vivo = true;
+    estadoCredenciales(empresaId).then((e) => { if (vivo) setAmbienteTx(e?.configurado ? e.ambiente : null); });
+    return () => { vivo = false; };
+  }, [empresaId]);
   const cfg = useMemo(() => configVC("venta"), []);
 
   const [productos, setProductos] = useState([]);
@@ -213,6 +221,23 @@ export default function FacturacionPage() {
       new Blob([JSON.stringify(d.json_dte, null, 2)], { type: "application/json" }),
       `${d.codigo_generacion}.json`
     );
+  }
+
+  async function transmitir(d) {
+    setError(null);
+    setExito(null);
+    if (!ambienteTx) {
+      setError("Primero configura el certificado y las claves en Administrador → Configuración → Transmisión a Hacienda.");
+      return;
+    }
+    if (ambienteTx === "01" && !window.confirm(`¿Transmitir ${d.numero_control} a Hacienda en PRODUCCIÓN?\n\nSerá un documento real y no se podrá modificar ni eliminar después.`)) return;
+    setTransmitiendoId(d.id);
+    const r = await transmitirDte(d.id);
+    setTransmitiendoId(null);
+    if (r.error) setError(r.error);
+    else if (r.aceptado) setExito(`Hacienda recibió ${d.numero_control}. Sello: ${r.sello}`);
+    else setError(`Hacienda rechazó ${d.numero_control}: ${r.mensaje || "sin detalle"}${r.observaciones?.length ? " — " + r.observaciones.join("; ") : ""}`);
+    await cargar();
   }
 
   async function eliminar(d) {
@@ -541,8 +566,14 @@ export default function FacturacionPage() {
                       <td className="px-4 py-2 text-right font-num tabular">{formatoMoneda(d.total)}</td>
                       <td className="px-4 py-2">
                         <span className="text-xs px-2 py-1 rounded-sm bg-accent/20 text-accentDark">
-                          {d.estado === "generado" ? "Generado (sin firmar)" : d.estado}
+                          {d.estado === "generado" ? "Generado (sin transmitir)" : d.estado === "transmitido" ? `Transmitido${d.ambiente ? ` (${NOMBRE_AMBIENTE[d.ambiente] || d.ambiente})` : ""}` : d.estado === "rechazado" ? "Rechazado por Hacienda" : d.estado}
                         </span>
+                        {d.sello_recibido && <div className="text-[10px] font-num text-inkSoft mt-1 break-all max-w-[220px]">Sello: {d.sello_recibido}</div>}
+                        {d.estado === "rechazado" && d.respuesta_mh && (
+                          <div className="text-[11px] text-rust mt-1 max-w-[260px]">
+                            {d.respuesta_mh.descripcionMsg}{(d.respuesta_mh.observaciones || []).length ? ": " + d.respuesta_mh.observaciones.join("; ") : ""}
+                          </div>
+                        )}
                       </td>
                       <td className="px-4 py-2 text-right whitespace-nowrap">
                         <button onClick={() => descargarPdf(d)} className="text-xs text-ledgerDark font-medium hover:underline mr-3">
@@ -555,7 +586,13 @@ export default function FacturacionPage() {
                           className="text-xs text-accentDark hover:underline mr-3">
                           {verJsonId === d.id ? "Ocultar JSON" : "Ver JSON"}
                         </button>
-                        {d.estado === "generado" && (
+                        {(d.estado === "generado" || d.estado === "rechazado") && (
+                          <button onClick={() => transmitir(d)} disabled={transmitiendoId === d.id}
+                            className="text-xs bg-brand text-onBrand px-2 py-1 rounded-sm hover:bg-brandDark disabled:opacity-60 mr-3">
+                            {transmitiendoId === d.id ? "Transmitiendo…" : d.estado === "rechazado" ? "Reintentar" : "Transmitir"}
+                          </button>
+                        )}
+                        {(d.estado === "generado" || d.estado === "rechazado") && (
                           <button onClick={() => eliminar(d)} className="text-xs text-rust hover:underline">
                             Eliminar
                           </button>

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useEmpresa } from "@/lib/EmpresaContext";
 import FormatoFacturaDte from "@/components/FormatoFacturaDte";
+import TransmisionHacienda from "@/components/TransmisionHacienda";
 
 const CAMPOS = [
   { key: "firma_elaborado", label: "Elaborado por", ayuda: "Quien prepara las partidas (por ejemplo, el contador o auxiliar)." },
@@ -51,6 +52,7 @@ export default function ConfiguracionPage() {
           {guardando ? "Guardando…" : "Guardar"}
         </button>
       </form>
+      <TransmisionHacienda />
       <FormatoFacturaDte />
     </div>
   );
