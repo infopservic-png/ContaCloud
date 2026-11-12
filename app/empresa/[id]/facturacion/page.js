@@ -198,8 +198,8 @@ export default function FacturacionPage() {
   async function descargarPdf(d) {
     setError(null);
     try {
-      const { generarPdfDte } = await import("@/lib/dtePdf");
-      const bytes = await generarPdfDte(d.json_dte, { estado: d.estado });
+      const { generarPdfDte, formatoDteEmpresa } = await import("@/lib/dtePdf");
+      const bytes = await generarPdfDte(d.json_dte, { estado: d.estado, formato: formatoDteEmpresa(empresa) });
       descargar(new Blob([bytes], { type: "application/pdf" }), `${d.codigo_generacion}.pdf`);
     } catch (e) {
       setError("No se pudo generar el PDF: " + (e.message || e));
