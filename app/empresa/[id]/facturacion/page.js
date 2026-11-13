@@ -541,6 +541,9 @@ export default function FacturacionPage() {
 
       <section>
         <h2 className="font-display text-base font-semibold mb-4">Documentos emitidos</h2>
+        {/* Los avisos de transmitir, eliminar y descargar se muestran aquí, junto a los botones de cada documento */}
+        {error && <p className="text-sm text-rust mb-3" role="alert">{error}</p>}
+        {exito && <p className="text-sm text-ledger mb-3" role="status">{exito}</p>}
         {documentos.length === 0 ? (
           <p className="text-inkSoft text-sm">Aún no se ha emitido ningún documento.</p>
         ) : (
