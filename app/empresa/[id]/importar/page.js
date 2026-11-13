@@ -5,6 +5,7 @@ import { useEmpresa } from "@/lib/EmpresaContext";
 import { configVC } from "@/lib/ventasCompras";
 import { configCxCxP, obtenerEntidades } from "@/lib/cxcxp";
 import { procesarLote } from "@/lib/importarDte";
+import { traerDelCorreo } from "@/lib/transmisionDte";
 import { hayEsquemas, clavesEsquemas } from "@/lib/dteValidacion";
 import { formatoMoneda } from "@/lib/contabilidad";
 import { exportarAExcel } from "@/lib/exportarExcel";
@@ -61,6 +62,20 @@ export default function ImportarPage() {
     setArchivos(leidos);
     setResultados(null);
     setError(null);
+  }
+
+  const [correo, setCorreo] = useState({ trabajando: false, aviso: null });
+  async function traerCorreo(reiniciar) {
+    setError(null);
+    setCorreo({ trabajando: true, aviso: null });
+    const r = await traerDelCorreo(empresaId, reiniciar);
+    if (r.error) { setCorreo({ trabajando: false, aviso: null }); return setError(r.error); }
+    setArchivos(r.archivos.map((a) => ({ nombre: `${a.nombre} — ${a.de || a.asunto}`.slice(0, 160), contenido: a.contenido })));
+    setResultados(null);
+    setCorreo({
+      trabajando: false,
+      aviso: `${r.correosRevisados} correo(s) revisado(s), ${r.archivos.length} JSON de DTE encontrado(s).` + (r.hayMas ? " Hay más correos: vuelve a pulsar «Traer del correo» después de importar estos." : ""),
+    });
   }
 
   async function procesar() {
@@ -150,6 +165,16 @@ export default function ImportarPage() {
             <input type="file" webkitdirectory="" directory="" multiple onChange={elegirArchivos} className="text-sm w-full" />
           </div>
         </div>
+        {modo === "compra" && (
+          <div className="flex flex-wrap items-center gap-3 border-t border-paperLine pt-3">
+            <button type="button" disabled={correo.trabajando} onClick={() => traerCorreo(false)} className="border border-brand text-brand px-3 py-1.5 rounded-sm text-sm hover:bg-white disabled:opacity-60">
+              {correo.trabajando ? "Revisando el correo…" : "Traer del correo"}
+            </button>
+            <button type="button" disabled={correo.trabajando} onClick={() => traerCorreo(true)} className="text-xs text-inkSoft hover:underline">Revisar de nuevo los últimos 30 días</button>
+            {correo.aviso && <span className="text-xs text-ledgerDark">{correo.aviso}</span>}
+            <span className="text-[11px] text-inkSoft w-full">Requiere conectar el correo en Configuración. Los documentos quedan en la lista; tú confirmas con «Procesar». Los ya registrados se marcan como «Ya existe».</span>
+          </div>
+        )}
         <p className="text-xs text-inkSoft">{archivos.length ? `${archivos.length} archivo(s) listo(s).` : "Aún no hay archivos seleccionados."}</p>
 
         {!soloValidar && (

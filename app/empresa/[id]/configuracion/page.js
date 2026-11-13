@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useEmpresa } from "@/lib/EmpresaContext";
 import FormatoFacturaDte from "@/components/FormatoFacturaDte";
 import TransmisionHacienda from "@/components/TransmisionHacienda";
+import CorreoCompras from "@/components/CorreoCompras";
 
 const CAMPOS = [
   { key: "firma_elaborado", label: "Elaborado por", ayuda: "Quien prepara las partidas (por ejemplo, el contador o auxiliar)." },
@@ -53,6 +54,7 @@ export default function ConfiguracionPage() {
         </button>
       </form>
       <TransmisionHacienda />
+      <CorreoCompras />
       <FormatoFacturaDte />
     </div>
   );
