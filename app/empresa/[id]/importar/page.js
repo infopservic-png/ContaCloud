@@ -32,6 +32,7 @@ export default function ImportarPage() {
   const [archivos, setArchivos] = useState([]);
   const [cuentaConcepto, setCuentaConcepto] = useState("");
   const [cuentaDinero, setCuentaDinero] = useState("");
+  const [cuentaImpuestos, setCuentaImpuestos] = useState("");
   const [permitirNoValidos, setPermitirNoValidos] = useState(false);
   const [permitirOtroNit, setPermitirOtroNit] = useState(false);
   const [crearNuevos, setCrearNuevos] = useState(true);
@@ -94,7 +95,7 @@ export default function ImportarPage() {
       const entidades = soloValidar ? [] : await obtenerEntidades(cfg, empresaId);
       const res = await procesarLote(
         archivos,
-        { modo: soloValidar ? "venta" : modo, empresa, empresaId, entidades, cuentaConcepto, cuentaDinero, soloValidar, permitirNoValidos, permitirOtroNit, crearNuevos },
+        { modo: soloValidar ? "venta" : modo, empresa, empresaId, entidades, cuentaConcepto, cuentaDinero, cuentaImpuestos, soloValidar, permitirNoValidos, permitirOtroNit, crearNuevos },
         (hechos, total) => setAvance({ hechos, total })
       );
       setResultados(res);
@@ -196,6 +197,14 @@ export default function ImportarPage() {
               <CuentaCombobox cuentas={cuentas} value={cuentaDinero} onChange={setCuentaDinero} placeholder="Caja, Bancos…" />
               <p className="text-xs text-inkSoft mt-1">Los documentos al crédito van a {configVC(modo).labelControl}.</p>
             </div>
+          </div>
+        )}
+
+        {modo === "compra" && (
+          <div>
+            <label className="block text-xs font-medium text-inkSoft mb-1">Cuenta para FOVIAL, COTRANS y otros impuestos de combustible (opcional)</label>
+            <CuentaCombobox cuentas={cuentas} value={cuentaImpuestos} onChange={setCuentaImpuestos} placeholder="Buscar cuenta…" />
+            <p className="text-xs text-inkSoft mt-1">Si la eliges, esos impuestos van a esta cuenta en lugar de la cuenta de compra o gasto; el documento sigue cuadrando. Si la dejas vacía, se suman a la cuenta de compra.</p>
           </div>
         )}
 
