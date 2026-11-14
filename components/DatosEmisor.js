@@ -17,7 +17,7 @@ import {
 import { validarUbicacion, actividadPorCodigo } from "@/lib/catalogos";
 
 const CAMPOS_TEXTO = [
-  "nit", "nrc", "nombre_comercial", "direccion", "telefono_emisor", "correo_emisor",
+  "nit", "dui", "nrc", "nombre_comercial", "direccion", "telefono_emisor", "correo_emisor",
   "cod_establecimiento", "cod_punto_venta",
   "cod_actividad", "desc_actividad", "cod_departamento", "cod_municipio", "cod_distrito",
 ];
@@ -43,6 +43,7 @@ export default function DatosEmisor({ empresa, onGuardado }) {
     setError(null);
     const limpio = {
       nit: soloDigitos(valores.nit),
+      dui: soloDigitos(valores.dui) || null,
       nrc: normalizarNrc(valores.nrc),
       nombre_comercial: valores.nombre_comercial.trim(),
       direccion: valores.direccion.trim(),
@@ -72,11 +73,15 @@ export default function DatosEmisor({ empresa, onGuardado }) {
       return;
     }
 
+    if (limpio.dui && limpio.dui.length !== 9) {
+      setError("El DUI debe tener 9 dígitos (sin guion).");
+      return;
+    }
     setGuardando(true);
     const { error: errDb } = await supabase.from("empresas").update(limpio).eq("id", empresa.id);
     setGuardando(false);
     if (errDb) {
-      setError("No se pudo guardar: " + errDb.message);
+      setError(/dui/i.test(errDb.message) ? "Falta ejecutar la migración 41 (DUI de la empresa) en Supabase." : "No se pudo guardar: " + errDb.message);
       return;
     }
     setValores((v) => ({ ...v, ...limpio }));
@@ -123,6 +128,10 @@ export default function DatosEmisor({ empresa, onGuardado }) {
         <div>
           <label className={labelCls}>NIT (sin guiones)</label>
           <input value={valores.nit} onChange={(e) => cambiar({ nit: e.target.value })} className={inputCls} />
+        </div>
+        <div>
+          <label className={labelCls}>DUI (persona natural, opcional)</label>
+          <input value={valores.dui} onChange={(e) => cambiar({ dui: e.target.value })} className={inputCls} placeholder="9 dígitos" />
         </div>
         <div>
           <label className={labelCls}>NRC (sin guion)</label>
