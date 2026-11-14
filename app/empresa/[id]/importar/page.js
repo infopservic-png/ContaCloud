@@ -64,17 +64,17 @@ export default function ImportarPage() {
     setError(null);
   }
 
-  const [correo, setCorreo] = useState({ trabajando: false, aviso: null });
+  const [correo, setCorreo] = useState({ trabajando: false, aviso: null, error: null });
   async function traerCorreo(reiniciar) {
     setError(null);
-    setCorreo({ trabajando: true, aviso: null });
+    setCorreo({ trabajando: true, aviso: null, error: null });
     const r = await traerDelCorreo(empresaId, reiniciar);
-    if (r.error) { setCorreo({ trabajando: false, aviso: null }); return setError(r.error); }
+    if (r.error) { setCorreo({ trabajando: false, aviso: null, error: r.error }); return; }
     setArchivos(r.archivos.map((a) => ({ nombre: `${a.nombre} — ${a.de || a.asunto}`.slice(0, 160), contenido: a.contenido })));
     setResultados(null);
     setCorreo({
       trabajando: false,
-      aviso: `${r.correosRevisados} correo(s) revisado(s), ${r.archivos.length} JSON de DTE encontrado(s).` + (r.hayMas ? " Hay más correos: vuelve a pulsar «Traer del correo» después de importar estos." : ""),
+      aviso: `${r.correosRevisados} correo(s) revisado(s), ${r.archivos.length} JSON de DTE encontrado(s).` + (r.archivos.length === 0 ? " Si esperabas compras, revisa que la carpeta sea la correcta y que los JSON vengan adjuntos (no dentro de un .zip)." : "") + (r.hayMas ? " Hay más correos: vuelve a pulsar «Traer del correo» después de importar estos." : ""),
     });
   }
 
@@ -172,6 +172,7 @@ export default function ImportarPage() {
             </button>
             <button type="button" disabled={correo.trabajando} onClick={() => traerCorreo(true)} className="text-xs text-inkSoft hover:underline">Revisar de nuevo los últimos 30 días</button>
             {correo.aviso && <span className="text-xs text-ledgerDark">{correo.aviso}</span>}
+            {correo.error && <span role="alert" className="text-sm text-rust w-full">{correo.error}</span>}
             <span className="text-[11px] text-inkSoft w-full">Requiere conectar el correo en Configuración. Los documentos quedan en la lista; tú confirmas con «Procesar». Los ya registrados se marcan como «Ya existe».</span>
           </div>
         )}
